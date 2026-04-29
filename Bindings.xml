@@ -1,0 +1,5 @@
+<Bindings>
+  <Binding name="EASYRANDOMMOUNT_RANDOM" category="ADDONS" header="EASYRANDOMMOUNT">
+    EasyRandomMount:Use()
+  </Binding>
+</Bindings>
