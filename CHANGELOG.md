@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fixed dismount behavior while in combat. EasyRandomMount now attempts to dismount first if you are already mounted, and only blocks summoning a new mount while in combat.
+
 ## 1.0.0
 
 - Added smart random mount keybind behavior.

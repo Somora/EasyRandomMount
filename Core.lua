@@ -425,13 +425,13 @@ function ERM:TryFallingAction()
 end
 
 function ERM:SummonRandomMount()
-    if InCombatLockdown() then
-        self:Print("Cannot summon a mount while in combat.")
+    if IsPlayerMounted() then
+        Dismount()
         return
     end
 
-    if IsPlayerMounted() then
-        Dismount()
+    if InCombatLockdown() then
+        self:Print("Cannot summon a mount while in combat.")
         return
     end
 

@@ -2,7 +2,7 @@
 ## Title: EasyRandomMount
 ## Notes: Smart random mount keybind with falling rescue, favorites, water/flying logic, and blacklist support.
 ## Author: Somora
-## Version: 1.0.0
+## Version: 1.0.1
 ## Category: Collections
 ## SavedVariables: EasyRandomMountDB
 
