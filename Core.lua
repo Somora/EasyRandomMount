@@ -4,10 +4,13 @@ EasyRandomMount = EasyRandomMount or {}
 local ERM = EasyRandomMount
 
 BINDING_HEADER_EASYRANDOMMOUNT = "EasyRandomMount"
-BINDING_NAME_EASYRANDOMMOUNT_RANDOM = "Summon random mount"
+_G["BINDING_NAME_CLICK EasyRandomMountSecureButton:LeftButton"] = "Summon random mount"
+BINDING_NAME_EASYRANDOMMOUNT_REPAIR = "Summon repair mount"
+BINDING_NAME_EASYRANDOMMOUNT_AUCTIONHOUSE = "Summon auction house mount"
 
 local DEFAULTS = {
     fallingEnabled = true,
+    fallingSpellsEnabled = false,
     preferFlyingMounts = true,
     preferWaterMounts = true,
     preferFlyingAtWaterSurface = true,
@@ -68,6 +71,36 @@ local WATER_MOUNT_TYPES = {
     [412] = true,
 }
 
+local SERVICE_MOUNT_PATTERNS = {
+    repair = {
+        "traveler's tundra mammoth",
+        "traveller's tundra mammoth",
+        "grand expedition yak",
+        "mighty caravan brutosaur",
+        "trader's gilded brutosaur",
+    },
+    auctionHouse = {
+        "mighty caravan brutosaur",
+        "trader's gilded brutosaur",
+    },
+}
+
+local COMBAT_SPELLS_BY_CLASS = {
+    DEATHKNIGHT = { 218999 }, -- Wraith Walk
+    DEMONHUNTER = { 192611 }, -- Fel Rush
+    DRUID = { 783 }, -- Travel Form
+    EVOKER = { 358267 }, -- Hover
+    HUNTER = { 186257 }, -- Aspect of the Cheetah
+    MAGE = { 1953 }, -- Blink
+    MONK = { 109132 }, -- Roll
+    PALADIN = { 190784 }, -- Divine Steed
+    PRIEST = { 1706, 121536 }, -- Levitate, Angelic Feather
+    ROGUE = { 2983 }, -- Sprint
+    SHAMAN = { 2645, 192063, 58875 }, -- Ghost Wolf, Gust of Wind, Spirit Walk
+    WARLOCK = { 111400 }, -- Burning Rush
+    WARRIOR = { 6544 }, -- Heroic Leap
+}
+
 local function GetSpellName(spellID)
     if C_Spell and C_Spell.GetSpellInfo then
         local info = C_Spell.GetSpellInfo(spellID)
@@ -93,14 +126,6 @@ local function IsSpellUsable(spellID)
     end
 
     return usable and not noMana
-end
-
-local function CastSpell(spellID)
-    if C_Spell and C_Spell.CastSpellByID then
-        C_Spell.CastSpellByID(spellID)
-    elseif CastSpellByID then
-        CastSpellByID(spellID)
-    end
 end
 
 local function IsItemUsable(itemID)
@@ -129,12 +154,12 @@ local function IsItemUsable(itemID)
     return enabled == 1 and (start == 0 or duration == 0)
 end
 
-local function UseItem(itemID)
-    if C_Item and C_Item.UseItemByID then
-        C_Item.UseItemByID(itemID)
-    else
-        UseItemByName(GetItemInfo(itemID) or itemID)
+local function GetItemName(itemID)
+    if C_Item and C_Item.GetItemNameByID then
+        return C_Item.GetItemNameByID(itemID)
     end
+
+    return GetItemInfo(itemID)
 end
 
 local function IsFlyingMount(mountID)
@@ -337,6 +362,46 @@ local function RandomIndex(max)
     return random(max)
 end
 
+local function NameMatchesPatterns(name, patterns)
+    if not name then
+        return false
+    end
+
+    local lowerName = string.lower(name)
+    for _, pattern in ipairs(patterns) do
+        if string.find(lowerName, pattern, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function GetCombatMacroText()
+    local class = UnitClassBase and UnitClassBase("player")
+    local spellIDs = class and COMBAT_SPELLS_BY_CLASS[class]
+    local lines = {
+        "/dismount [mounted]",
+        "/stopmacro [mounted]",
+    }
+
+    for _, spellID in ipairs(spellIDs or {}) do
+        local spellName = GetSpellName(spellID)
+        if spellName then
+            if class == "PRIEST" or spellID == 121536 then
+                lines[#lines + 1] = "/cast [@player,known:" .. spellName .. "] " .. spellName
+            elseif spellID == 6544 then
+                lines[#lines + 1] = "/cast [@cursor,known:" .. spellName .. "] " .. spellName
+            else
+                lines[#lines + 1] = "/cast [known:" .. spellName .. "] " .. spellName
+            end
+        end
+    end
+
+    lines[#lines + 1] = "/leavevehicle"
+    return table.concat(lines, "\n")
+end
+
 function ERM:GetDB()
     EasyRandomMountDB = CopyDefaults(DEFAULTS, EasyRandomMountDB)
     return EasyRandomMountDB
@@ -405,23 +470,79 @@ function ERM:IsMountBlacklisted(mountID)
     return IsMountBlacklisted(mountID)
 end
 
-function ERM:TryFallingAction()
+function ERM:GetFallingAction()
     local db = self:GetDB()
     if not db.fallingEnabled or not IsFalling() then
-        return false
+        return
+    end
+
+    if InCombatLockdown() then
+        self:Print("Falling rescue cannot cast spells or use items in combat.")
+        return "blocked"
     end
 
     for _, action in ipairs(db.falling) do
-        if action.type == "spell" and IsSpellUsable(action.id) then
-            CastSpell(action.id)
-            return true
+        if action.type == "spell" and db.fallingSpellsEnabled and IsSpellUsable(action.id) then
+            local spellName = GetSpellName(action.id)
+            if spellName then
+                return "spell", spellName
+            end
         elseif action.type == "item" and IsItemUsable(action.id) then
-            UseItem(action.id)
-            return true
+            local itemName = GetItemName(action.id)
+            if itemName then
+                return "item", itemName
+            end
+        end
+    end
+end
+
+function ERM:GetServiceMountIDs(serviceType)
+    local patterns = SERVICE_MOUNT_PATTERNS[serviceType]
+    local mounts = {}
+    local matchingMountCount = 0
+
+    if not patterns or not C_MountJournal or not C_MountJournal.GetMountIDs then
+        return mounts, matchingMountCount
+    end
+
+    for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
+        local name, _, _, _, isUsable, _, _, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+        if isCollected and not IsMountBlacklisted(mountID) and NameMatchesPatterns(name, patterns) then
+            matchingMountCount = matchingMountCount + 1
+            if isUsable then
+                mounts[#mounts + 1] = mountID
+            end
         end
     end
 
-    return false
+    return mounts, matchingMountCount
+end
+
+function ERM:SummonServiceMount(serviceType)
+    if IsPlayerMounted() then
+        Dismount()
+        return
+    end
+
+    if InCombatLockdown() then
+        self:Print("Cannot summon a mount while in combat.")
+        return
+    end
+
+    local mounts, matchingMountCount = self:GetServiceMountIDs(serviceType)
+    if #mounts == 0 then
+        local label = serviceType == "auctionHouse" and "auction house" or "repair"
+        if matchingMountCount > 0 then
+            self:Print("Your " .. label .. " mount is not available here right now.")
+        else
+            self:Print("No " .. label .. " mount found.")
+        end
+        return
+    end
+
+    local mountID = mounts[RandomIndex(#mounts)]
+    self:GetDB().lastMountID = mountID
+    C_MountJournal.SummonByID(mountID)
 end
 
 function ERM:SummonRandomMount()
@@ -451,11 +572,68 @@ function ERM:SummonRandomMount()
 end
 
 function ERM:Use()
-    if self:TryFallingAction() then
+    self:SummonRandomMount()
+end
+
+function ERM:SecureButtonPreClick(button)
+    button.easyRandomMountSkipInsecure = false
+
+    if InCombatLockdown() then
+        button.easyRandomMountSkipInsecure = true
         return
     end
 
-    self:SummonRandomMount()
+    button:SetAttribute("type", nil)
+    button:SetAttribute("spell", nil)
+    button:SetAttribute("item", nil)
+    button:SetAttribute("unit", "player")
+
+    local actionType, value = self:GetFallingAction()
+    if actionType == "spell" then
+        button:SetAttribute("type", "spell")
+        button:SetAttribute("spell", value)
+        button:SetAttribute("unit", "player")
+        button.easyRandomMountSkipInsecure = true
+    elseif actionType == "item" then
+        button:SetAttribute("type", "item")
+        button:SetAttribute("item", value)
+        button:SetAttribute("unit", "player")
+        button.easyRandomMountSkipInsecure = true
+    elseif actionType == "blocked" then
+        button.easyRandomMountSkipInsecure = true
+    elseif self:GetDB().fallingEnabled and IsFalling() then
+        button.easyRandomMountSkipInsecure = true
+        if self:GetDB().fallingSpellsEnabled then
+            self:Print("No usable falling rescue action found.")
+        else
+            self:Print("No usable falling rescue item found. Falling spell casts are disabled.")
+        end
+    end
+end
+
+function ERM:SecureButtonPostClick(button)
+    if InCombatLockdown() then
+        return
+    end
+
+    button:SetAttribute("type", nil)
+    button:SetAttribute("spell", nil)
+    button:SetAttribute("item", nil)
+end
+
+function ERM:SecureButtonOnClick(button)
+    if button.easyRandomMountSkipInsecure then
+        return
+    end
+
+    self:Use()
+end
+
+function ERM:SetupCombatSecureButton(button)
+    button:SetAttribute("type", "macro")
+    button:SetAttribute("macrotext", GetCombatMacroText())
+    button:SetAttribute("unit", "player")
+    button.easyRandomMountSkipInsecure = true
 end
 
 SLASH_EASYRANDOMMOUNT1 = "/erm"
@@ -467,6 +645,16 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
         local db = ERM:GetDB()
         db.fallingEnabled = not db.fallingEnabled
         ERM:Print("Falling rescue is now " .. (db.fallingEnabled and "enabled." or "disabled."))
+        if ERM.RefreshOptions then
+            ERM:RefreshOptions()
+        end
+        return
+    end
+
+    if input == "fallingspells" then
+        local db = ERM:GetDB()
+        db.fallingSpellsEnabled = not db.fallingSpellsEnabled
+        ERM:Print("Falling spell casts are now " .. (db.fallingSpellsEnabled and "enabled." or "disabled."))
         if ERM.RefreshOptions then
             ERM:RefreshOptions()
         end
@@ -552,6 +740,16 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
         return
     end
 
+    if input == "repair" then
+        ERM:SummonServiceMount("repair")
+        return
+    end
+
+    if input == "ah" or input == "auctionhouse" then
+        ERM:SummonServiceMount("auctionHouse")
+        return
+    end
+
     local blacklistID = input:match("^blacklist%s+(%d+)$")
     if blacklistID then
         local mountID = tonumber(blacklistID)
@@ -615,6 +813,8 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
     end
 
     ERM:Print("/erm - use random mount")
+    ERM:Print("/erm repair - summon a repair mount")
+    ERM:Print("/erm ah - summon an auction house mount")
     ERM:Print("/erm falling - toggle falling rescue")
     ERM:Print("/erm flying - toggle flying mount preference")
     ERM:Print("/erm water - toggle water mount preference")
@@ -639,5 +839,29 @@ frame:SetScript("OnEvent", function(_, _, loadedAddonName)
     ERM:GetDB()
     if math and math.randomseed and time then
         math.randomseed(time())
+    end
+end)
+
+local secureButton = CreateFrame("Button", "EasyRandomMountSecureButton", UIParent, "SecureActionButtonTemplate")
+secureButton:RegisterForClicks("AnyDown")
+secureButton:SetScript("PreClick", function(self)
+    ERM:SecureButtonPreClick(self)
+end)
+secureButton:HookScript("OnClick", function(self)
+    ERM:SecureButtonOnClick(self)
+end)
+secureButton:SetScript("PostClick", function(self)
+    ERM:SecureButtonPostClick(self)
+end)
+secureButton:RegisterEvent("PLAYER_REGEN_DISABLED")
+secureButton:RegisterEvent("PLAYER_REGEN_ENABLED")
+secureButton:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+        ERM:SetupCombatSecureButton(self)
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        self:SetAttribute("type", nil)
+        self:SetAttribute("macrotext", nil)
+        self:SetAttribute("unit", nil)
+        self.easyRandomMountSkipInsecure = false
     end
 end)

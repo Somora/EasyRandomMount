@@ -1,8 +1,8 @@
 ## Interface: 120005
 ## Title: EasyRandomMount
-## Notes: Smart random mount keybind with falling rescue, favorites, water/flying logic, and blacklist support.
+## Notes: Smart random, repair, and auction house mount keybinds with falling rescue and blacklist support.
 ## Author: Somora
-## Version: 1.0.1
+## Version: 1.1.0
 ## Category: Collections
 ## SavedVariables: EasyRandomMountDB
 

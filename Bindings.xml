@@ -1,5 +1,10 @@
 <Bindings>
-  <Binding name="EASYRANDOMMOUNT_RANDOM" category="ADDONS" header="EASYRANDOMMOUNT">
-    EasyRandomMount:Use()
+  <Binding name="CLICK EasyRandomMountSecureButton:LeftButton" category="ADDONS" header="EASYRANDOMMOUNT">
+  </Binding>
+  <Binding name="EASYRANDOMMOUNT_REPAIR" category="ADDONS">
+    EasyRandomMount:SummonServiceMount("repair")
+  </Binding>
+  <Binding name="EASYRANDOMMOUNT_AUCTIONHOUSE" category="ADDONS">
+    EasyRandomMount:SummonServiceMount("auctionHouse")
   </Binding>
 </Bindings>

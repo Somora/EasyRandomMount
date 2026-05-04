@@ -7,8 +7,10 @@ It can prefer flying mounts, use water mounts underwater, trigger falling rescue
 ## Features
 
 - Random mount keybind with automatic dismount.
+- Extra keybinds for repair mounts and auction house mounts.
+- Secure combat fallback for class movement/falling tools where Blizzard allows them.
 - Flying, water, skyriding, and water-surface mount preferences.
-- Falling rescue list for spells and items such as Slow Fall, Levitate, Glide, and similar tools.
+- Falling rescue list for items such as gliders and kites. Spell entries can be enabled experimentally through the secure keybind path.
 - Blizzard favorite support: use all mounts, prefer favorites, or only favorites.
 - Mount blacklist with options UI, slash commands, and Mount Journal right-click support.
 - Scrollable blacklist for larger mount collections.
@@ -32,6 +34,8 @@ The settings are split into three pages:
 ## Slash Commands
 
 - `/erm` uses the random mount keybind behavior.
+- `/erm repair` summons a repair mount.
+- `/erm ah` summons an auction house mount.
 - `/erm options` opens the options panel.
 - `/erm falling` toggles falling rescue.
 - `/erm flying` toggles flying mount preference.
@@ -48,7 +52,9 @@ The settings are split into three pages:
 
 ## Known Limitations
 
-- Falling rescue depends on WoW allowing the spell or item at that moment. Combat, the global cooldown, class restrictions, missing items, or zone rules can still block it.
+- Falling rescue depends on WoW allowing the action at that moment. Spell casts such as Levitate are disabled by default, but can be enabled experimentally. They use EasyRandomMount's secure keybind button and only apply when using the actual keybind, not slash commands.
+- In combat, EasyRandomMount uses a pre-built secure fallback macro. This is intentionally simpler than the normal out-of-combat random mount logic because addons cannot dynamically change protected actions after combat lockdown starts.
+- Repair and auction house mount keybinds detect known service mounts by their Mount Journal names.
 - Water-surface detection depends on WoW state such as swimming, flyable area, and the breath timer. Some edge cases may vary by zone.
 - The Mount Journal right-click menu is replaced for mount rows so EasyRandomMount can add blacklist support.
 - If WoW marks the addon as out of date, run `/dump select(4, GetBuildInfo())` in chat and update `## Interface` in `EasyRandomMount.toc`.
