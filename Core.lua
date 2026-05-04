@@ -10,7 +10,6 @@ BINDING_NAME_EASYRANDOMMOUNT_AUCTIONHOUSE = "Summon auction house mount"
 
 local DEFAULTS = {
     fallingEnabled = true,
-    fallingSpellsEnabled = false,
     preferFlyingMounts = true,
     preferWaterMounts = true,
     preferFlyingAtWaterSurface = true,
@@ -482,7 +481,7 @@ function ERM:GetFallingAction()
     end
 
     for _, action in ipairs(db.falling) do
-        if action.type == "spell" and db.fallingSpellsEnabled and IsSpellUsable(action.id) then
+        if action.type == "spell" and IsSpellUsable(action.id) then
             local spellName = GetSpellName(action.id)
             if spellName then
                 return "spell", spellName
@@ -603,11 +602,7 @@ function ERM:SecureButtonPreClick(button)
         button.easyRandomMountSkipInsecure = true
     elseif self:GetDB().fallingEnabled and IsFalling() then
         button.easyRandomMountSkipInsecure = true
-        if self:GetDB().fallingSpellsEnabled then
-            self:Print("No usable falling rescue action found.")
-        else
-            self:Print("No usable falling rescue item found. Falling spell casts are disabled.")
-        end
+        self:Print("No usable falling rescue action found.")
     end
 end
 
@@ -645,16 +640,6 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
         local db = ERM:GetDB()
         db.fallingEnabled = not db.fallingEnabled
         ERM:Print("Falling rescue is now " .. (db.fallingEnabled and "enabled." or "disabled."))
-        if ERM.RefreshOptions then
-            ERM:RefreshOptions()
-        end
-        return
-    end
-
-    if input == "fallingspells" then
-        local db = ERM:GetDB()
-        db.fallingSpellsEnabled = not db.fallingSpellsEnabled
-        ERM:Print("Falling spell casts are now " .. (db.fallingSpellsEnabled and "enabled." or "disabled."))
         if ERM.RefreshOptions then
             ERM:RefreshOptions()
         end
