@@ -75,8 +75,6 @@ local SERVICE_MOUNT_PATTERNS = {
         "traveler's tundra mammoth",
         "traveller's tundra mammoth",
         "grand expedition yak",
-        "mighty caravan brutosaur",
-        "trader's gilded brutosaur",
     },
     auctionHouse = {
         "mighty caravan brutosaur",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+- Removed Brutosaur mounts from the repair mount keybind pool. They are now only detected for the auction house mount keybind.
+
 ## 1.1.1
 
 - Removed the separate falling spell toggle. Falling rescue now uses the configured spell/item priority list directly through the secure keybind path.
