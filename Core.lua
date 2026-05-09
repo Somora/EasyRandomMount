@@ -82,6 +82,11 @@ local SERVICE_MOUNT_PATTERNS = {
     },
 }
 
+local LOW_LEVEL_MOUNT_PATTERNS = {
+    "chauffeured mekgineer's chopper",
+    "chauffeured mechano-hog",
+}
+
 local COMBAT_SPELLS_BY_CLASS = {
     DEATHKNIGHT = { 218999 }, -- Wraith Walk
     DEMONHUNTER = { 192611 }, -- Fel Rush
@@ -252,8 +257,29 @@ local function IsPlayerMounted()
     return C_MountJournal and C_MountJournal.IsMounted and C_MountJournal.IsMounted()
 end
 
+local function IsLowLevelMountOverrideActive()
+    local level = UnitLevel and UnitLevel("player")
+    return level and level >= 1 and level <= 9
+end
+
+local function IsLowLevelMount(name)
+    if not name then
+        return false
+    end
+
+    local lowerName = string.lower(name)
+    for _, pattern in ipairs(LOW_LEVEL_MOUNT_PATTERNS) do
+        if string.find(lowerName, pattern, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function GetUsableMountIDs()
     local mounts = {}
+    local lowLevelMounts = {}
     local favoriteMounts = {}
     local flyingMounts = {}
     local surfaceFlyingMounts = {}
@@ -262,6 +288,7 @@ local function GetUsableMountIDs()
     local waterMounts = {}
     local favoriteWaterMounts = {}
     local isSwimmingAtSurface = IsPlayerSwimmingAtSurface()
+    local isLowLevelOverrideActive = IsLowLevelMountOverrideActive()
     local availableMountCount = 0
 
     if not C_MountJournal or not C_MountJournal.GetMountIDs then
@@ -269,10 +296,14 @@ local function GetUsableMountIDs()
     end
 
     for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
-        local _, _, _, _, isUsable, _, isFavorite, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+        local name, _, _, _, isUsable, _, isFavorite, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
         local isFlyingMount = IsFlyingMount(mountID)
         if isCollected and not IsMountBlacklisted(mountID) then
             availableMountCount = availableMountCount + 1
+
+            if isLowLevelOverrideActive and isUsable and IsLowLevelMount(name) then
+                lowLevelMounts[#lowLevelMounts + 1] = mountID
+            end
 
             if isFlyingMount and isSwimmingAtSurface then
                 surfaceFlyingMounts[#surfaceFlyingMounts + 1] = mountID
@@ -305,6 +336,10 @@ local function GetUsableMountIDs()
     end
 
     local db = EasyRandomMount:GetDB()
+
+    if isLowLevelOverrideActive then
+        return lowLevelMounts, #lowLevelMounts
+    end
 
     if IsFlyingPreferredHere() and isSwimmingAtSurface and #surfaceFlyingMounts > 0 then
         if db.favoriteMode == "only" and #favoriteSurfaceFlyingMounts > 0 then

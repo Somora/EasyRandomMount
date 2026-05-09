@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Added a low-level mount override. Characters from level 1 through 9 now only use chauffeured mounts for the random mount keybind.
+
 ## 1.1.2
 
 - Removed Brutosaur mounts from the repair mount keybind pool. They are now only detected for the auction house mount keybind.
