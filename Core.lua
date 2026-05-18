@@ -93,7 +93,7 @@ local COMBAT_SPELLS_BY_CLASS = {
     DRUID = { 783 }, -- Travel Form
     EVOKER = { 358267 }, -- Hover
     HUNTER = { 186257 }, -- Aspect of the Cheetah
-    MAGE = { 1953 }, -- Blink
+    MAGE = { 130, 1953 }, -- Slow Fall, Blink
     MONK = { 109132 }, -- Roll
     PALADIN = { 190784 }, -- Divine Steed
     PRIEST = { 1706, 121536 }, -- Levitate, Angelic Feather
@@ -128,6 +128,18 @@ local function IsSpellUsable(spellID)
     end
 
     return usable and not noMana
+end
+
+local function IsSpellKnownByPlayer(spellID)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        return C_SpellBook.IsSpellKnown(spellID)
+    elseif IsPlayerSpell then
+        return IsPlayerSpell(spellID)
+    elseif IsSpellKnown then
+        return IsSpellKnown(spellID)
+    end
+
+    return GetSpellName(spellID) ~= nil
 end
 
 local function IsItemUsable(itemID)
@@ -337,10 +349,6 @@ local function GetUsableMountIDs()
 
     local db = EasyRandomMount:GetDB()
 
-    if isLowLevelOverrideActive then
-        return lowLevelMounts, #lowLevelMounts
-    end
-
     if IsFlyingPreferredHere() and isSwimmingAtSurface and #surfaceFlyingMounts > 0 then
         if db.favoriteMode == "only" and #favoriteSurfaceFlyingMounts > 0 then
             return favoriteSurfaceFlyingMounts, availableMountCount
@@ -363,6 +371,10 @@ local function GetUsableMountIDs()
         else
             return waterMounts, availableMountCount
         end
+    end
+
+    if isLowLevelOverrideActive then
+        return lowLevelMounts, #lowLevelMounts
     end
 
     if IsFlyingPreferredHere() and #flyingMounts > 0 then
@@ -420,12 +432,16 @@ local function GetCombatMacroText()
     for _, spellID in ipairs(spellIDs or {}) do
         local spellName = GetSpellName(spellID)
         if spellName then
-            if class == "PRIEST" or spellID == 121536 then
-                lines[#lines + 1] = "/cast [@player,known:" .. spellName .. "] " .. spellName
+            if spellID == 130 or spellID == 1706 then
+                lines[#lines + 1] = "/cast [@player,falling,known:" .. spellID .. "] " .. spellName
+            elseif class == "PRIEST" or spellID == 121536 then
+                lines[#lines + 1] = "/cast [@player,nofalling,known:" .. spellID .. "] " .. spellName
             elseif spellID == 6544 then
-                lines[#lines + 1] = "/cast [@cursor,known:" .. spellName .. "] " .. spellName
+                lines[#lines + 1] = "/cast [@cursor,known:" .. spellID .. "] " .. spellName
+            elseif spellID == 1953 then
+                lines[#lines + 1] = "/cast [nofalling,known:" .. spellID .. "] " .. spellName
             else
-                lines[#lines + 1] = "/cast [known:" .. spellName .. "] " .. spellName
+                lines[#lines + 1] = "/cast [known:" .. spellID .. "] " .. spellName
             end
         end
     end
@@ -514,7 +530,7 @@ function ERM:GetFallingAction()
     end
 
     for _, action in ipairs(db.falling) do
-        if action.type == "spell" and IsSpellUsable(action.id) then
+        if action.type == "spell" and IsSpellKnownByPlayer(action.id) then
             local spellName = GetSpellName(action.id)
             if spellName then
                 return "spell", spellName

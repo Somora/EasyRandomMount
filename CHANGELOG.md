@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.4
+
+- Fixed underwater mount priority for low-level characters by allowing underwater mounts to win before the level 1-9 chauffeured mount override.
+- Fixed combat fallback macro conditions to use spell IDs for `known:` checks, preventing wrong-class spell attempts.
+- Fixed mage combat fallback by trying Slow Fall while falling and avoiding Blink while falling.
+- Relaxed falling rescue spell detection to use known spells instead of generic usability checks, making self-targeted spells like Slow Fall more reliable.
+
 ## 1.1.3
 
 - Added a low-level mount override. Characters from level 1 through 9 now only use chauffeured mounts for the random mount keybind.
