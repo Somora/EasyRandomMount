@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5
+
+- Simplified combat fallback macros by removing fragile `known:` conditions and improving class detection. This should prevent wrong-class spell error messages.
+
 ## 1.1.4
 
 - Fixed underwater mount priority for low-level characters by allowing underwater mounts to win before the level 1-9 chauffeured mount override.

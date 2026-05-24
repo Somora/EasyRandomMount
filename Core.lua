@@ -421,8 +421,24 @@ local function NameMatchesPatterns(name, patterns)
     return false
 end
 
-local function GetCombatMacroText()
+local function GetPlayerClassFileName()
     local class = UnitClassBase and UnitClassBase("player")
+    if class and COMBAT_SPELLS_BY_CLASS[class] then
+        return class
+    end
+
+    if UnitClass then
+        local _, englishClass = UnitClass("player")
+        if englishClass and COMBAT_SPELLS_BY_CLASS[englishClass] then
+            return englishClass
+        end
+    end
+
+    return class
+end
+
+local function GetCombatMacroText()
+    local class = GetPlayerClassFileName()
     local spellIDs = class and COMBAT_SPELLS_BY_CLASS[class]
     local lines = {
         "/dismount [mounted]",
@@ -433,15 +449,15 @@ local function GetCombatMacroText()
         local spellName = GetSpellName(spellID)
         if spellName then
             if spellID == 130 or spellID == 1706 then
-                lines[#lines + 1] = "/cast [@player,falling,known:" .. spellID .. "] " .. spellName
+                lines[#lines + 1] = "/cast [@player,falling] " .. spellName
             elseif class == "PRIEST" or spellID == 121536 then
-                lines[#lines + 1] = "/cast [@player,nofalling,known:" .. spellID .. "] " .. spellName
+                lines[#lines + 1] = "/cast [@player,nofalling] " .. spellName
             elseif spellID == 6544 then
-                lines[#lines + 1] = "/cast [@cursor,known:" .. spellID .. "] " .. spellName
+                lines[#lines + 1] = "/cast [@cursor] " .. spellName
             elseif spellID == 1953 then
-                lines[#lines + 1] = "/cast [nofalling,known:" .. spellID .. "] " .. spellName
+                lines[#lines + 1] = "/cast [nofalling] " .. spellName
             else
-                lines[#lines + 1] = "/cast [known:" .. spellID .. "] " .. spellName
+                lines[#lines + 1] = "/cast " .. spellName
             end
         end
     end
@@ -674,6 +690,8 @@ function ERM:SecureButtonOnClick(button)
 end
 
 function ERM:SetupCombatSecureButton(button)
+    button:SetAttribute("spell", nil)
+    button:SetAttribute("item", nil)
     button:SetAttribute("type", "macro")
     button:SetAttribute("macrotext", GetCombatMacroText())
     button:SetAttribute("unit", "player")
@@ -895,6 +913,8 @@ secureButton:SetScript("OnEvent", function(self, event)
     elseif event == "PLAYER_REGEN_ENABLED" then
         self:SetAttribute("type", nil)
         self:SetAttribute("macrotext", nil)
+        self:SetAttribute("spell", nil)
+        self:SetAttribute("item", nil)
         self:SetAttribute("unit", nil)
         self.easyRandomMountSkipInsecure = false
     end
