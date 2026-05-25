@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.6
+
+- Improved combat dismount reliability by keeping secure dismount macros ready on the random, repair, and auction house keybinds.
+- Migrated repair and auction house keybinds to secure click buttons so they can safely dismount while mounted in combat.
+
 ## 1.1.5
 
 - Simplified combat fallback macros by removing fragile `known:` conditions and improving class detection. This should prevent wrong-class spell error messages.

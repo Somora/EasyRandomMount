@@ -5,8 +5,8 @@ local ERM = EasyRandomMount
 
 BINDING_HEADER_EASYRANDOMMOUNT = "EasyRandomMount"
 _G["BINDING_NAME_CLICK EasyRandomMountSecureButton:LeftButton"] = "Summon random mount"
-BINDING_NAME_EASYRANDOMMOUNT_REPAIR = "Summon repair mount"
-BINDING_NAME_EASYRANDOMMOUNT_AUCTIONHOUSE = "Summon auction house mount"
+_G["BINDING_NAME_CLICK EasyRandomMountRepairSecureButton:LeftButton"] = "Summon repair mount"
+_G["BINDING_NAME_CLICK EasyRandomMountAuctionHouseSecureButton:LeftButton"] = "Summon auction house mount"
 
 local DEFAULTS = {
     fallingEnabled = true,
@@ -466,6 +466,10 @@ local function GetCombatMacroText()
     return table.concat(lines, "\n")
 end
 
+local function GetDismountMacroText()
+    return "/dismount [mounted]\n/stopmacro [mounted]"
+end
+
 function ERM:GetDB()
     EasyRandomMountDB = CopyDefaults(DEFAULTS, EasyRandomMountDB)
     return EasyRandomMountDB
@@ -647,10 +651,23 @@ function ERM:SecureButtonPreClick(button)
         return
     end
 
-    button:SetAttribute("type", nil)
     button:SetAttribute("spell", nil)
     button:SetAttribute("item", nil)
     button:SetAttribute("unit", "player")
+
+    if IsPlayerMounted() then
+        button:SetAttribute("type", "macro")
+        button:SetAttribute("macrotext", GetDismountMacroText())
+        button.easyRandomMountSkipInsecure = true
+        return
+    end
+
+    button:SetAttribute("type", nil)
+    button:SetAttribute("macrotext", nil)
+
+    if button.easyRandomMountMode ~= "random" then
+        return
+    end
 
     local actionType, value = self:GetFallingAction()
     if actionType == "spell" then
@@ -676,9 +693,11 @@ function ERM:SecureButtonPostClick(button)
         return
     end
 
-    button:SetAttribute("type", nil)
     button:SetAttribute("spell", nil)
     button:SetAttribute("item", nil)
+    button:SetAttribute("type", "macro")
+    button:SetAttribute("macrotext", GetCombatMacroText())
+    button:SetAttribute("unit", "player")
 end
 
 function ERM:SecureButtonOnClick(button)
@@ -686,7 +705,13 @@ function ERM:SecureButtonOnClick(button)
         return
     end
 
-    self:Use()
+    if button.easyRandomMountMode == "repair" then
+        self:SummonServiceMount("repair")
+    elseif button.easyRandomMountMode == "auctionHouse" then
+        self:SummonServiceMount("auctionHouse")
+    else
+        self:Use()
+    end
 end
 
 function ERM:SetupCombatSecureButton(button)
@@ -696,6 +721,31 @@ function ERM:SetupCombatSecureButton(button)
     button:SetAttribute("macrotext", GetCombatMacroText())
     button:SetAttribute("unit", "player")
     button.easyRandomMountSkipInsecure = true
+end
+
+function ERM:MigrateServiceKeybindings()
+    if not GetBindingKey or not SetBindingClick or InCombatLockdown() then
+        return
+    end
+
+    local changed = false
+    local migrations = {
+        EASYRANDOMMOUNT_REPAIR = "EasyRandomMountRepairSecureButton",
+        EASYRANDOMMOUNT_AUCTIONHOUSE = "EasyRandomMountAuctionHouseSecureButton",
+    }
+
+    for oldBindingName, buttonName in pairs(migrations) do
+        local key1, key2 = GetBindingKey(oldBindingName)
+        for _, key in ipairs({ key1, key2 }) do
+            if key and SetBindingClick(key, buttonName, "LeftButton") then
+                changed = true
+            end
+        end
+    end
+
+    if changed and SaveBindings and GetCurrentBindingSet then
+        SaveBindings(GetCurrentBindingSet())
+    end
 end
 
 SLASH_EASYRANDOMMOUNT1 = "/erm"
@@ -889,33 +939,44 @@ frame:SetScript("OnEvent", function(_, _, loadedAddonName)
     end
 
     ERM:GetDB()
+    ERM:MigrateServiceKeybindings()
     if math and math.randomseed and time then
         math.randomseed(time())
     end
 end)
 
-local secureButton = CreateFrame("Button", "EasyRandomMountSecureButton", UIParent, "SecureActionButtonTemplate")
-secureButton:RegisterForClicks("AnyDown")
-secureButton:SetScript("PreClick", function(self)
-    ERM:SecureButtonPreClick(self)
-end)
-secureButton:HookScript("OnClick", function(self)
-    ERM:SecureButtonOnClick(self)
-end)
-secureButton:SetScript("PostClick", function(self)
-    ERM:SecureButtonPostClick(self)
-end)
-secureButton:RegisterEvent("PLAYER_REGEN_DISABLED")
-secureButton:RegisterEvent("PLAYER_REGEN_ENABLED")
-secureButton:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_REGEN_DISABLED" then
-        ERM:SetupCombatSecureButton(self)
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        self:SetAttribute("type", nil)
-        self:SetAttribute("macrotext", nil)
-        self:SetAttribute("spell", nil)
-        self:SetAttribute("item", nil)
-        self:SetAttribute("unit", nil)
-        self.easyRandomMountSkipInsecure = false
-    end
-end)
+local function CreateEasyRandomMountSecureButton(name, mode)
+    local button = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
+    button.easyRandomMountMode = mode
+    button:RegisterForClicks("AnyDown")
+    button:SetScript("PreClick", function(self)
+        ERM:SecureButtonPreClick(self)
+    end)
+    button:HookScript("OnClick", function(self)
+        ERM:SecureButtonOnClick(self)
+    end)
+    button:SetScript("PostClick", function(self)
+        ERM:SecureButtonPostClick(self)
+    end)
+    button:RegisterEvent("PLAYER_REGEN_DISABLED")
+    button:RegisterEvent("PLAYER_REGEN_ENABLED")
+    button:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" then
+            ERM:SetupCombatSecureButton(self)
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            self:SetAttribute("spell", nil)
+            self:SetAttribute("item", nil)
+            self:SetAttribute("type", "macro")
+            self:SetAttribute("macrotext", GetCombatMacroText())
+            self:SetAttribute("unit", "player")
+            self.easyRandomMountSkipInsecure = false
+        end
+    end)
+
+    ERM:SetupCombatSecureButton(button)
+    return button
+end
+
+CreateEasyRandomMountSecureButton("EasyRandomMountSecureButton", "random")
+CreateEasyRandomMountSecureButton("EasyRandomMountRepairSecureButton", "repair")
+CreateEasyRandomMountSecureButton("EasyRandomMountAuctionHouseSecureButton", "auctionHouse")
