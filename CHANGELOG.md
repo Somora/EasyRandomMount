@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7
+
+- Fixed out-of-combat dismounting by simplifying the secure dismount macro and improving mounted detection.
+
 ## 1.1.6
 
 - Improved combat dismount reliability by keeping secure dismount macros ready on the random, repair, and auction house keybinds.

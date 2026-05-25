@@ -266,7 +266,20 @@ local function IsPlayerMounted()
         return true
     end
 
-    return C_MountJournal and C_MountJournal.IsMounted and C_MountJournal.IsMounted()
+    if C_MountJournal and C_MountJournal.IsMounted and C_MountJournal.IsMounted() then
+        return true
+    end
+
+    if C_MountJournal and C_MountJournal.GetMountIDs and C_MountJournal.GetMountInfoByID then
+        for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
+            local _, _, _, isActive = C_MountJournal.GetMountInfoByID(mountID)
+            if isActive then
+                return true
+            end
+        end
+    end
+
+    return false
 end
 
 local function IsLowLevelMountOverrideActive()
@@ -441,7 +454,7 @@ local function GetCombatMacroText()
     local class = GetPlayerClassFileName()
     local spellIDs = class and COMBAT_SPELLS_BY_CLASS[class]
     local lines = {
-        "/dismount [mounted]",
+        "/dismount",
         "/stopmacro [mounted]",
     }
 
@@ -467,7 +480,7 @@ local function GetCombatMacroText()
 end
 
 local function GetDismountMacroText()
-    return "/dismount [mounted]\n/stopmacro [mounted]"
+    return "/dismount"
 end
 
 function ERM:GetDB()
