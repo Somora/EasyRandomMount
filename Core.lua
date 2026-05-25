@@ -658,6 +658,7 @@ end
 
 function ERM:SecureButtonPreClick(button)
     button.easyRandomMountSkipInsecure = false
+    button.easyRandomMountWasMounted = IsPlayerMounted()
 
     if InCombatLockdown() then
         button.easyRandomMountSkipInsecure = true
@@ -668,15 +669,9 @@ function ERM:SecureButtonPreClick(button)
     button:SetAttribute("item", nil)
     button:SetAttribute("unit", "player")
 
-    if IsPlayerMounted() then
-        button:SetAttribute("type", "macro")
-        button:SetAttribute("macrotext", GetDismountMacroText())
-        button.easyRandomMountSkipInsecure = true
+    if button.easyRandomMountWasMounted then
         return
     end
-
-    button:SetAttribute("type", nil)
-    button:SetAttribute("macrotext", nil)
 
     if button.easyRandomMountMode ~= "random" then
         return
@@ -685,13 +680,31 @@ function ERM:SecureButtonPreClick(button)
     local actionType, value = self:GetFallingAction()
     if actionType == "spell" then
         button:SetAttribute("type", "spell")
+        button:SetAttribute("type1", "spell")
+        button:SetAttribute("*type1", "spell")
+        button:SetAttribute("macrotext", nil)
+        button:SetAttribute("macrotext1", nil)
+        button:SetAttribute("*macrotext1", nil)
         button:SetAttribute("spell", value)
+        button:SetAttribute("spell1", value)
+        button:SetAttribute("*spell1", value)
         button:SetAttribute("unit", "player")
+        button:SetAttribute("unit1", "player")
+        button:SetAttribute("*unit1", "player")
         button.easyRandomMountSkipInsecure = true
     elseif actionType == "item" then
         button:SetAttribute("type", "item")
+        button:SetAttribute("type1", "item")
+        button:SetAttribute("*type1", "item")
+        button:SetAttribute("macrotext", nil)
+        button:SetAttribute("macrotext1", nil)
+        button:SetAttribute("*macrotext1", nil)
         button:SetAttribute("item", value)
+        button:SetAttribute("item1", value)
+        button:SetAttribute("*item1", value)
         button:SetAttribute("unit", "player")
+        button:SetAttribute("unit1", "player")
+        button:SetAttribute("*unit1", "player")
         button.easyRandomMountSkipInsecure = true
     elseif actionType == "blocked" then
         button.easyRandomMountSkipInsecure = true
@@ -707,14 +720,29 @@ function ERM:SecureButtonPostClick(button)
     end
 
     button:SetAttribute("spell", nil)
+    button:SetAttribute("spell1", nil)
     button:SetAttribute("item", nil)
+    button:SetAttribute("item1", nil)
     button:SetAttribute("type", "macro")
-    button:SetAttribute("macrotext", GetCombatMacroText())
+    button:SetAttribute("type1", "macro")
+    button:SetAttribute("*type1", "macro")
+    button:SetAttribute("macrotext", GetDismountMacroText())
+    button:SetAttribute("macrotext1", GetDismountMacroText())
+    button:SetAttribute("*macrotext1", GetDismountMacroText())
     button:SetAttribute("unit", "player")
+    button:SetAttribute("unit1", "player")
+    button:SetAttribute("*unit1", "player")
 end
 
 function ERM:SecureButtonOnClick(button)
     if button.easyRandomMountSkipInsecure then
+        return
+    end
+
+    if button.easyRandomMountWasMounted then
+        if not InCombatLockdown() and IsPlayerMounted() then
+            Dismount()
+        end
         return
     end
 
@@ -729,11 +757,36 @@ end
 
 function ERM:SetupCombatSecureButton(button)
     button:SetAttribute("spell", nil)
+    button:SetAttribute("spell1", nil)
     button:SetAttribute("item", nil)
+    button:SetAttribute("item1", nil)
     button:SetAttribute("type", "macro")
+    button:SetAttribute("type1", "macro")
+    button:SetAttribute("*type1", "macro")
     button:SetAttribute("macrotext", GetCombatMacroText())
+    button:SetAttribute("macrotext1", GetCombatMacroText())
+    button:SetAttribute("*macrotext1", GetCombatMacroText())
     button:SetAttribute("unit", "player")
+    button:SetAttribute("unit1", "player")
+    button:SetAttribute("*unit1", "player")
     button.easyRandomMountSkipInsecure = true
+end
+
+function ERM:SetupDismountSecureButton(button)
+    button:SetAttribute("spell", nil)
+    button:SetAttribute("spell1", nil)
+    button:SetAttribute("item", nil)
+    button:SetAttribute("item1", nil)
+    button:SetAttribute("type", "macro")
+    button:SetAttribute("type1", "macro")
+    button:SetAttribute("*type1", "macro")
+    button:SetAttribute("macrotext", GetDismountMacroText())
+    button:SetAttribute("macrotext1", GetDismountMacroText())
+    button:SetAttribute("*macrotext1", GetDismountMacroText())
+    button:SetAttribute("unit", "player")
+    button:SetAttribute("unit1", "player")
+    button:SetAttribute("*unit1", "player")
+    button.easyRandomMountSkipInsecure = false
 end
 
 function ERM:MigrateServiceKeybindings()
@@ -961,7 +1014,7 @@ end)
 local function CreateEasyRandomMountSecureButton(name, mode)
     local button = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
     button.easyRandomMountMode = mode
-    button:RegisterForClicks("AnyDown")
+    button:RegisterForClicks("AnyUp", "AnyDown")
     button:SetScript("PreClick", function(self)
         ERM:SecureButtonPreClick(self)
     end)
@@ -977,16 +1030,11 @@ local function CreateEasyRandomMountSecureButton(name, mode)
         if event == "PLAYER_REGEN_DISABLED" then
             ERM:SetupCombatSecureButton(self)
         elseif event == "PLAYER_REGEN_ENABLED" then
-            self:SetAttribute("spell", nil)
-            self:SetAttribute("item", nil)
-            self:SetAttribute("type", "macro")
-            self:SetAttribute("macrotext", GetCombatMacroText())
-            self:SetAttribute("unit", "player")
-            self.easyRandomMountSkipInsecure = false
+            ERM:SetupDismountSecureButton(self)
         end
     end)
 
-    ERM:SetupCombatSecureButton(button)
+    ERM:SetupDismountSecureButton(button)
     return button
 end
 

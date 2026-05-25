@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.8
+
+- Fixed mounted combat dismounting by registering secure keybind buttons for both key-down and key-up clicks and adding explicit LeftButton secure attributes.
+
 ## 1.1.7
 
 - Fixed out-of-combat dismounting by simplifying the secure dismount macro and improving mounted detection.
