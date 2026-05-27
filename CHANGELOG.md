@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.9
+
+- Reduced falling rescue chat spam by staying quiet when no configured rescue spell is known and no configured rescue item is owned, while throttling temporary unusable/combat messages.
+
 ## 1.1.8
 
 - Fixed mounted combat dismounting by registering secure keybind buttons for both key-down and key-up clicks and adding explicit LeftButton secure attributes.

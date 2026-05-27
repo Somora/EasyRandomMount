@@ -168,6 +168,10 @@ local function IsItemUsable(itemID)
     return enabled == 1 and (start == 0 or duration == 0)
 end
 
+local function IsItemOwned(itemID)
+    return GetItemCount(itemID, false, true) > 0
+end
+
 local function GetItemName(itemID)
     if C_Item and C_Item.GetItemNameByID then
         return C_Item.GetItemNameByID(itemID)
@@ -492,6 +496,17 @@ function ERM:Print(message)
     print("|cff3dd6d0EasyRandomMount|r " .. tostring(message))
 end
 
+function ERM:PrintThrottled(key, message, seconds)
+    local now = GetTime and GetTime() or time()
+    self.printThrottle = self.printThrottle or {}
+    if self.printThrottle[key] and now - self.printThrottle[key] < (seconds or 3) then
+        return
+    end
+
+    self.printThrottle[key] = now
+    self:Print(message)
+end
+
 function ERM:GetMountName(mountID)
     if C_MountJournal and C_MountJournal.GetMountInfoByID then
         local name = C_MountJournal.GetMountInfoByID(mountID)
@@ -558,23 +573,29 @@ function ERM:GetFallingAction()
     end
 
     if InCombatLockdown() then
-        self:Print("Falling rescue cannot cast spells or use items in combat.")
         return "blocked"
     end
 
+    local hasKnownOrOwnedAction = false
     for _, action in ipairs(db.falling) do
         if action.type == "spell" and IsSpellKnownByPlayer(action.id) then
+            hasKnownOrOwnedAction = true
             local spellName = GetSpellName(action.id)
             if spellName then
                 return "spell", spellName
             end
-        elseif action.type == "item" and IsItemUsable(action.id) then
-            local itemName = GetItemName(action.id)
-            if itemName then
-                return "item", itemName
+        elseif action.type == "item" and IsItemOwned(action.id) then
+            hasKnownOrOwnedAction = true
+            if IsItemUsable(action.id) then
+                local itemName = GetItemName(action.id)
+                if itemName then
+                    return "item", itemName
+                end
             end
         end
     end
+
+    return hasKnownOrOwnedAction and "unusable" or "missing"
 end
 
 function ERM:GetServiceMountIDs(serviceType)
@@ -708,9 +729,12 @@ function ERM:SecureButtonPreClick(button)
         button.easyRandomMountSkipInsecure = true
     elseif actionType == "blocked" then
         button.easyRandomMountSkipInsecure = true
-    elseif self:GetDB().fallingEnabled and IsFalling() then
+        self:PrintThrottled("fallingBlocked", "Falling rescue cannot cast spells or use items in combat.", 3)
+    elseif actionType == "unusable" then
         button.easyRandomMountSkipInsecure = true
-        self:Print("No usable falling rescue action found.")
+        self:PrintThrottled("fallingUnusable", "No usable falling rescue action found.", 3)
+    elseif actionType == "missing" then
+        button.easyRandomMountSkipInsecure = true
     end
 end
 
