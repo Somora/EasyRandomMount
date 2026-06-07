@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.10
+
+- Throttled repeated mount failure chat messages when mounting is blocked, unavailable, or disallowed.
+
 ## 1.1.9
 
 - Reduced falling rescue chat spam by staying quiet when no configured rescue spell is known and no configured rescue item is owned, while throttling temporary unusable/combat messages.

@@ -627,7 +627,7 @@ function ERM:SummonServiceMount(serviceType)
     end
 
     if InCombatLockdown() then
-        self:Print("Cannot summon a mount while in combat.")
+        self:PrintThrottled("serviceMountCombat", "Cannot summon a mount while in combat.", 3)
         return
     end
 
@@ -635,9 +635,9 @@ function ERM:SummonServiceMount(serviceType)
     if #mounts == 0 then
         local label = serviceType == "auctionHouse" and "auction house" or "repair"
         if matchingMountCount > 0 then
-            self:Print("Your " .. label .. " mount is not available here right now.")
+            self:PrintThrottled(serviceType .. "MountUnavailable", "Your " .. label .. " mount is not available here right now.", 3)
         else
-            self:Print("No " .. label .. " mount found.")
+            self:PrintThrottled(serviceType .. "MountMissing", "No " .. label .. " mount found.", 3)
         end
         return
     end
@@ -654,16 +654,16 @@ function ERM:SummonRandomMount()
     end
 
     if InCombatLockdown() then
-        self:Print("Cannot summon a mount while in combat.")
+        self:PrintThrottled("randomMountCombat", "Cannot summon a mount while in combat.", 3)
         return
     end
 
     local mounts, availableMountCount = GetUsableMountIDs()
     if #mounts == 0 then
         if availableMountCount > 0 then
-            self:Print("Mounting is not allowed here right now.")
+            self:PrintThrottled("mountingNotAllowed", "Mounting is not allowed here right now.", 3)
         else
-            self:Print("No usable mounts found with the current filters.")
+            self:PrintThrottled("noUsableMounts", "No usable mounts found with the current filters.", 3)
         end
         return
     end
