@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.11
+
+- Skipped slow novelty turtle mounts, such as Riding Turtle and Sea Turtle, in the normal random mount pool.
+- Prioritized Grand Expedition Yak for the repair mount keybind whenever it is available.
+
 ## 1.1.10
 
 - Throttled repeated mount failure chat messages when mounting is blocked, unavailable, or disallowed.

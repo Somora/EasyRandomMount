@@ -2,7 +2,7 @@
 ## Title: EasyRandomMount
 ## Notes: Smart random, repair, and auction house mount keybinds with falling rescue and blacklist support.
 ## Author: Somora
-## Version: 1.1.10
+## Version: 1.1.11
 ## Category: Collections
 ## SavedVariables: EasyRandomMountDB
 

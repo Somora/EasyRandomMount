@@ -82,9 +82,20 @@ local SERVICE_MOUNT_PATTERNS = {
     },
 }
 
+local SERVICE_MOUNT_PRIORITY_PATTERNS = {
+    repair = {
+        "grand expedition yak",
+    },
+}
+
 local LOW_LEVEL_MOUNT_PATTERNS = {
     "chauffeured mekgineer's chopper",
     "chauffeured mechano-hog",
+}
+
+local SLOW_GROUND_MOUNT_PATTERNS = {
+    "riding turtle",
+    "sea turtle",
 }
 
 local COMBAT_SPELLS_BY_CLASS = {
@@ -306,6 +317,21 @@ local function IsLowLevelMount(name)
     return false
 end
 
+local function IsSlowGroundMount(name)
+    if not name then
+        return false
+    end
+
+    local lowerName = string.lower(name)
+    for _, pattern in ipairs(SLOW_GROUND_MOUNT_PATTERNS) do
+        if string.find(lowerName, pattern, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function GetUsableMountIDs()
     local mounts = {}
     local lowLevelMounts = {}
@@ -327,6 +353,7 @@ local function GetUsableMountIDs()
     for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
         local name, _, _, _, isUsable, _, isFavorite, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
         local isFlyingMount = IsFlyingMount(mountID)
+        local isSlowGroundMount = IsSlowGroundMount(name)
         if isCollected and not IsMountBlacklisted(mountID) then
             availableMountCount = availableMountCount + 1
 
@@ -341,14 +368,14 @@ local function GetUsableMountIDs()
                 end
             end
 
-            if isUsable then
+            if isUsable and not isSlowGroundMount then
                 mounts[#mounts + 1] = mountID
                 if isFavorite then
                     favoriteMounts[#favoriteMounts + 1] = mountID
                 end
             end
 
-            if isUsable and isFlyingMount then
+            if isUsable and isFlyingMount and not isSlowGroundMount then
                 flyingMounts[#flyingMounts + 1] = mountID
                 if isFavorite then
                     favoriteFlyingMounts[#favoriteFlyingMounts + 1] = mountID
@@ -436,6 +463,24 @@ local function NameMatchesPatterns(name, patterns)
     end
 
     return false
+end
+
+local function GetPreferredServiceMountID(serviceType, mounts)
+    local priorityPatterns = SERVICE_MOUNT_PRIORITY_PATTERNS[serviceType]
+    if not priorityPatterns or #mounts == 0 then
+        return mounts[RandomIndex(#mounts)]
+    end
+
+    for _, pattern in ipairs(priorityPatterns) do
+        for _, mountID in ipairs(mounts) do
+            local name = C_MountJournal.GetMountInfoByID(mountID)
+            if NameMatchesPatterns(name, { pattern }) then
+                return mountID
+            end
+        end
+    end
+
+    return mounts[RandomIndex(#mounts)]
 end
 
 local function GetPlayerClassFileName()
@@ -642,7 +687,7 @@ function ERM:SummonServiceMount(serviceType)
         return
     end
 
-    local mountID = mounts[RandomIndex(#mounts)]
+    local mountID = GetPreferredServiceMountID(serviceType, mounts)
     self:GetDB().lastMountID = mountID
     C_MountJournal.SummonByID(mountID)
 end
