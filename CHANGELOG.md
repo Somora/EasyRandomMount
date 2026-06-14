@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.12
+
+- Filtered out character-hidden mounts from random, repair, and auction house pools to avoid faction/class-restricted mount errors.
+
 ## 1.1.11
 
 - Skipped slow novelty turtle mounts, such as Riding Turtle and Sea Turtle, in the normal random mount pool.

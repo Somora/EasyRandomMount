@@ -332,6 +332,10 @@ local function IsSlowGroundMount(name)
     return false
 end
 
+local function IsMountAvailableToCharacter(isCollected, hideOnChar)
+    return isCollected and not hideOnChar
+end
+
 local function GetUsableMountIDs()
     local mounts = {}
     local lowLevelMounts = {}
@@ -351,10 +355,10 @@ local function GetUsableMountIDs()
     end
 
     for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
-        local name, _, _, _, isUsable, _, isFavorite, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+        local name, _, _, _, isUsable, _, isFavorite, _, _, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(mountID)
         local isFlyingMount = IsFlyingMount(mountID)
         local isSlowGroundMount = IsSlowGroundMount(name)
-        if isCollected and not IsMountBlacklisted(mountID) then
+        if IsMountAvailableToCharacter(isCollected, hideOnChar) and not IsMountBlacklisted(mountID) then
             availableMountCount = availableMountCount + 1
 
             if isLowLevelOverrideActive and isUsable and IsLowLevelMount(name) then
@@ -653,8 +657,8 @@ function ERM:GetServiceMountIDs(serviceType)
     end
 
     for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
-        local name, _, _, _, isUsable, _, _, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
-        if isCollected and not IsMountBlacklisted(mountID) and NameMatchesPatterns(name, patterns) then
+        local name, _, _, _, isUsable, _, _, _, _, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+        if IsMountAvailableToCharacter(isCollected, hideOnChar) and not IsMountBlacklisted(mountID) and NameMatchesPatterns(name, patterns) then
             matchingMountCount = matchingMountCount + 1
             if isUsable then
                 mounts[#mounts + 1] = mountID
