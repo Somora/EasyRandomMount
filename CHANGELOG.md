@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.13
+
+- Updated the TOC interface version for WoW 12.0.7.
+
 ## 1.1.12
 
 - Filtered out character-hidden mounts from random, repair, and auction house pools to avoid faction/class-restricted mount errors.
