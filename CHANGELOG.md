@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.14
+
+- Added an option and slash command to disable class movement abilities in combat.
+- Added mount pool caching with automatic invalidation when relevant mount, zone, level, blacklist, or preference state changes.
+- Removed unexpected movement combat fallback spells such as Blink, Roll, Fel Rush, Burning Rush, Gust of Wind, Angelic Feather, and Heroic Leap.
+
 ## 1.1.13
 
 - Updated the TOC interface version for WoW 12.0.7.

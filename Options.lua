@@ -133,6 +133,7 @@ function ERM:RefreshOptions()
 
     if self.generalPanel then
         self.generalPanel.fallingCheck:SetChecked(db.fallingEnabled)
+        self.generalPanel.combatFallbackCheck:SetChecked(db.combatFallbackEnabled)
         self.generalPanel.flyingCheck:SetChecked(db.preferFlyingMounts)
         self.generalPanel.waterCheck:SetChecked(db.preferWaterMounts)
         self.generalPanel.surfaceCheck:SetChecked(db.preferFlyingAtWaterSurface)
@@ -302,11 +303,19 @@ mainPanel.fallingCheck:SetScript("OnClick", function(self)
     ERM:GetDB().fallingEnabled = self:GetChecked()
 end)
 
+mainPanel.combatFallbackCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
+mainPanel.combatFallbackCheck:SetPoint("TOPLEFT", mainPanel.fallingCheck, "BOTTOMLEFT", 0, -8)
+mainPanel.combatFallbackCheck.Text:SetText("Use class movement abilities in combat")
+mainPanel.combatFallbackCheck:SetScript("OnClick", function(self)
+    ERM:GetDB().combatFallbackEnabled = self:GetChecked()
+end)
+
 mainPanel.flyingCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
-mainPanel.flyingCheck:SetPoint("TOPLEFT", mainPanel.fallingCheck, "BOTTOMLEFT", 0, -8)
+mainPanel.flyingCheck:SetPoint("TOPLEFT", mainPanel.combatFallbackCheck, "BOTTOMLEFT", 0, -8)
 mainPanel.flyingCheck.Text:SetText("Prefer flying mounts when available")
 mainPanel.flyingCheck:SetScript("OnClick", function(self)
     ERM:GetDB().preferFlyingMounts = self:GetChecked()
+    ERM:ClearMountCache()
 end)
 
 mainPanel.waterCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -314,6 +323,7 @@ mainPanel.waterCheck:SetPoint("TOPLEFT", mainPanel.flyingCheck, "BOTTOMLEFT", 0,
 mainPanel.waterCheck.Text:SetText("Prefer water mounts while submerged")
 mainPanel.waterCheck:SetScript("OnClick", function(self)
     ERM:GetDB().preferWaterMounts = self:GetChecked()
+    ERM:ClearMountCache()
 end)
 
 mainPanel.surfaceCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -321,6 +331,7 @@ mainPanel.surfaceCheck:SetPoint("TOPLEFT", mainPanel.waterCheck, "BOTTOMLEFT", 0
 mainPanel.surfaceCheck.Text:SetText("Prefer flying mounts at the water surface")
 mainPanel.surfaceCheck:SetScript("OnClick", function(self)
     ERM:GetDB().preferFlyingAtWaterSurface = self:GetChecked()
+    ERM:ClearMountCache()
 end)
 
 mainPanel.flyableCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -328,6 +339,7 @@ mainPanel.flyableCheck:SetPoint("TOPLEFT", mainPanel.surfaceCheck, "BOTTOMLEFT",
 mainPanel.flyableCheck.Text:SetText("Only prefer flying mounts in flyable areas")
 mainPanel.flyableCheck:SetScript("OnClick", function(self)
     ERM:GetDB().preferFlyingOnlyWhenFlyable = self:GetChecked()
+    ERM:ClearMountCache()
 end)
 
 mainPanel.skyridingCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -335,6 +347,7 @@ mainPanel.skyridingCheck:SetPoint("TOPLEFT", mainPanel.flyableCheck, "BOTTOMLEFT
 mainPanel.skyridingCheck.Text:SetText("Allow skyriding mounts")
 mainPanel.skyridingCheck:SetScript("OnClick", function(self)
     ERM:GetDB().allowSkyridingMounts = self:GetChecked()
+    ERM:ClearMountCache()
 end)
 
 mainPanel.debugCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")

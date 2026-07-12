@@ -15,9 +15,11 @@ local DEFAULTS = {
     preferFlyingAtWaterSurface = true,
     preferFlyingOnlyWhenFlyable = true,
     allowSkyridingMounts = true,
+    combatFallbackEnabled = true,
     favoriteMode = "all",
     debugEnabled = false,
     lastMountID = nil,
+    blacklistRevision = 0,
     blacklistedMounts = {},
     falling = {
         { type = "spell", id = 130, name = "Slow Fall" },
@@ -100,18 +102,14 @@ local SLOW_GROUND_MOUNT_PATTERNS = {
 
 local COMBAT_SPELLS_BY_CLASS = {
     DEATHKNIGHT = { 218999 }, -- Wraith Walk
-    DEMONHUNTER = { 192611 }, -- Fel Rush
     DRUID = { 783 }, -- Travel Form
     EVOKER = { 358267 }, -- Hover
     HUNTER = { 186257 }, -- Aspect of the Cheetah
-    MAGE = { 130, 1953 }, -- Slow Fall, Blink
-    MONK = { 109132 }, -- Roll
+    MAGE = { 130 }, -- Slow Fall
     PALADIN = { 190784 }, -- Divine Steed
-    PRIEST = { 1706, 121536 }, -- Levitate, Angelic Feather
+    PRIEST = { 1706 }, -- Levitate
     ROGUE = { 2983 }, -- Sprint
-    SHAMAN = { 2645, 192063, 58875 }, -- Ghost Wolf, Gust of Wind, Spirit Walk
-    WARLOCK = { 111400 }, -- Burning Rush
-    WARRIOR = { 6544 }, -- Heroic Leap
+    SHAMAN = { 2645, 58875 }, -- Ghost Wolf, Spirit Walk
 }
 
 local function GetSpellName(spellID)
@@ -336,7 +334,37 @@ local function IsMountAvailableToCharacter(isCollected, hideOnChar)
     return isCollected and not hideOnChar
 end
 
+local function GetMountCacheKey()
+    local db = EasyRandomMount:GetDB()
+    local flyable = IsFlyableArea and IsFlyableArea() and "1" or "0"
+    local swimming = IsSwimming and IsSwimming() and "1" or "0"
+    local submerged = IsPlayerSubmerged() and "1" or "0"
+    local surface = IsPlayerSwimmingAtSurface() and "1" or "0"
+    local level = UnitLevel and UnitLevel("player") or 0
+
+    return table.concat({
+        flyable,
+        swimming,
+        submerged,
+        surface,
+        tostring(level),
+        db.preferFlyingMounts and "1" or "0",
+        db.preferWaterMounts and "1" or "0",
+        db.preferFlyingAtWaterSurface and "1" or "0",
+        db.preferFlyingOnlyWhenFlyable and "1" or "0",
+        db.allowSkyridingMounts and "1" or "0",
+        db.favoriteMode or "all",
+        tostring(db.blacklistRevision or 0),
+    }, ":")
+end
+
 local function GetUsableMountIDs()
+    local cacheKey = GetMountCacheKey()
+    local cache = EasyRandomMount.mountCache
+    if cache and cache.key == cacheKey then
+        return cache.mounts, cache.availableMountCount
+    end
+
     local mounts = {}
     local lowLevelMounts = {}
     local favoriteMounts = {}
@@ -399,50 +427,67 @@ local function GetUsableMountIDs()
 
     if IsFlyingPreferredHere() and isSwimmingAtSurface and #surfaceFlyingMounts > 0 then
         if db.favoriteMode == "only" and #favoriteSurfaceFlyingMounts > 0 then
-            return favoriteSurfaceFlyingMounts, availableMountCount
+            mounts = favoriteSurfaceFlyingMounts
         elseif db.favoriteMode == "prefer" and #favoriteSurfaceFlyingMounts > 0 then
-            return favoriteSurfaceFlyingMounts, availableMountCount
+            mounts = favoriteSurfaceFlyingMounts
         elseif db.favoriteMode == "only" then
             -- Keep looking for any usable favorite below.
         else
-            return surfaceFlyingMounts, availableMountCount
+            mounts = surfaceFlyingMounts
+        end
+
+        if mounts == favoriteSurfaceFlyingMounts or mounts == surfaceFlyingMounts then
+            EasyRandomMount.mountCache = { key = cacheKey, mounts = mounts, availableMountCount = availableMountCount }
+            return mounts, availableMountCount
         end
     end
 
     if db.preferWaterMounts and IsPlayerUnderwaterForMounts() and #waterMounts > 0 then
         if db.favoriteMode == "only" and #favoriteWaterMounts > 0 then
-            return favoriteWaterMounts, availableMountCount
+            mounts = favoriteWaterMounts
         elseif db.favoriteMode == "prefer" and #favoriteWaterMounts > 0 then
-            return favoriteWaterMounts, availableMountCount
+            mounts = favoriteWaterMounts
         elseif db.favoriteMode == "only" then
             -- Keep looking for usable favorites in less-specific mount groups.
         else
-            return waterMounts, availableMountCount
+            mounts = waterMounts
+        end
+
+        if mounts == favoriteWaterMounts or mounts == waterMounts then
+            EasyRandomMount.mountCache = { key = cacheKey, mounts = mounts, availableMountCount = availableMountCount }
+            return mounts, availableMountCount
         end
     end
 
     if isLowLevelOverrideActive then
+        EasyRandomMount.mountCache = { key = cacheKey, mounts = lowLevelMounts, availableMountCount = #lowLevelMounts }
         return lowLevelMounts, #lowLevelMounts
     end
 
     if IsFlyingPreferredHere() and #flyingMounts > 0 then
         if db.favoriteMode == "only" and #favoriteFlyingMounts > 0 then
-            return favoriteFlyingMounts, availableMountCount
+            mounts = favoriteFlyingMounts
         elseif db.favoriteMode == "prefer" and #favoriteFlyingMounts > 0 then
-            return favoriteFlyingMounts, availableMountCount
+            mounts = favoriteFlyingMounts
         elseif db.favoriteMode == "only" then
             -- Keep looking for any usable favorite below.
         else
-            return flyingMounts, availableMountCount
+            mounts = flyingMounts
+        end
+
+        if mounts == favoriteFlyingMounts or mounts == flyingMounts then
+            EasyRandomMount.mountCache = { key = cacheKey, mounts = mounts, availableMountCount = availableMountCount }
+            return mounts, availableMountCount
         end
     end
 
     if db.favoriteMode == "only" then
-        return favoriteMounts, availableMountCount
+        mounts = favoriteMounts
     elseif db.favoriteMode == "prefer" and #favoriteMounts > 0 then
-        return favoriteMounts, availableMountCount
+        mounts = favoriteMounts
     end
 
+    EasyRandomMount.mountCache = { key = cacheKey, mounts = mounts, availableMountCount = availableMountCount }
     return mounts, availableMountCount
 end
 
@@ -511,19 +556,15 @@ local function GetCombatMacroText()
         "/stopmacro [mounted]",
     }
 
-    for _, spellID in ipairs(spellIDs or {}) do
-        local spellName = GetSpellName(spellID)
-        if spellName then
-            if spellID == 130 or spellID == 1706 then
-                lines[#lines + 1] = "/cast [@player,falling] " .. spellName
-            elseif class == "PRIEST" or spellID == 121536 then
-                lines[#lines + 1] = "/cast [@player,nofalling] " .. spellName
-            elseif spellID == 6544 then
-                lines[#lines + 1] = "/cast [@cursor] " .. spellName
-            elseif spellID == 1953 then
-                lines[#lines + 1] = "/cast [nofalling] " .. spellName
-            else
-                lines[#lines + 1] = "/cast " .. spellName
+    if EasyRandomMount:GetDB().combatFallbackEnabled then
+        for _, spellID in ipairs(spellIDs or {}) do
+            local spellName = GetSpellName(spellID)
+            if spellName then
+                if spellID == 130 or spellID == 1706 then
+                    lines[#lines + 1] = "/cast [@player,falling] " .. spellName
+                else
+                    lines[#lines + 1] = "/cast " .. spellName
+                end
             end
         end
     end
@@ -556,6 +597,10 @@ function ERM:PrintThrottled(key, message, seconds)
     self:Print(message)
 end
 
+function ERM:ClearMountCache()
+    self.mountCache = nil
+end
+
 function ERM:GetMountName(mountID)
     if C_MountJournal and C_MountJournal.GetMountInfoByID then
         local name = C_MountJournal.GetMountInfoByID(mountID)
@@ -585,6 +630,8 @@ function ERM:SetMountBlacklisted(mountID, isBlacklisted)
     local db = self:GetDB()
     db.blacklistedMounts[mountID] = isBlacklisted and true or nil
     db.blacklistedMounts[tostring(mountID)] = nil
+    db.blacklistRevision = (db.blacklistRevision or 0) + 1
+    self:ClearMountCache()
 end
 
 function ERM:GetFavoriteModeLabel()
@@ -608,6 +655,7 @@ function ERM:CycleFavoriteMode()
         db.favoriteMode = "all"
     end
 
+    self:ClearMountCache()
     return db.favoriteMode
 end
 
@@ -902,6 +950,16 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
         return
     end
 
+    if input == "combat" then
+        local db = ERM:GetDB()
+        db.combatFallbackEnabled = not db.combatFallbackEnabled
+        ERM:Print("Combat class abilities are now " .. (db.combatFallbackEnabled and "enabled." or "disabled."))
+        if ERM.RefreshOptions then
+            ERM:RefreshOptions()
+        end
+        return
+    end
+
     if input == "flying" then
         local db = ERM:GetDB()
         db.preferFlyingMounts = not db.preferFlyingMounts
@@ -1057,6 +1115,7 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
     ERM:Print("/erm repair - summon a repair mount")
     ERM:Print("/erm ah - summon an auction house mount")
     ERM:Print("/erm falling - toggle falling rescue")
+    ERM:Print("/erm combat - toggle combat class abilities")
     ERM:Print("/erm flying - toggle flying mount preference")
     ERM:Print("/erm water - toggle water mount preference")
     ERM:Print("/erm surface - toggle flying at water surface")
@@ -1072,7 +1131,19 @@ end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
-frame:SetScript("OnEvent", function(_, _, loadedAddonName)
+frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("ZONE_CHANGED")
+frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+frame:RegisterEvent("ZONE_CHANGED_INDOORS")
+frame:RegisterEvent("PLAYER_LEVEL_UP")
+frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+frame:RegisterEvent("COMPANION_UPDATE")
+frame:SetScript("OnEvent", function(_, event, loadedAddonName)
+    if event ~= "ADDON_LOADED" then
+        ERM:ClearMountCache()
+        return
+    end
+
     if loadedAddonName ~= addonName then
         return
     end
