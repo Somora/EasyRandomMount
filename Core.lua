@@ -112,6 +112,8 @@ local COMBAT_SPELLS_BY_CLASS = {
     SHAMAN = { 2645, 58875 }, -- Ghost Wolf, Spirit Walk
 }
 
+local DRUID_TRAVEL_FORM_SPELL_ID = 783
+
 local function GetSpellName(spellID)
     if C_Spell and C_Spell.GetSpellInfo then
         local info = C_Spell.GetSpellInfo(spellID)
@@ -577,6 +579,40 @@ local function GetDismountMacroText()
     return "/dismount"
 end
 
+local function GetDruidTravelFormSpellName()
+    if GetPlayerClassFileName() ~= "DRUID" or not IsSpellKnownByPlayer(DRUID_TRAVEL_FORM_SPELL_ID) then
+        return
+    end
+
+    return GetSpellName(DRUID_TRAVEL_FORM_SPELL_ID)
+end
+
+local function IsPlayerMoving()
+    if not GetUnitSpeed then
+        return false
+    end
+
+    return (GetUnitSpeed("player") or 0) > 0
+end
+
+local function SetSecureSpellAction(button, spellName)
+    button:SetAttribute("type", "spell")
+    button:SetAttribute("type1", "spell")
+    button:SetAttribute("*type1", "spell")
+    button:SetAttribute("macrotext", nil)
+    button:SetAttribute("macrotext1", nil)
+    button:SetAttribute("*macrotext1", nil)
+    button:SetAttribute("item", nil)
+    button:SetAttribute("item1", nil)
+    button:SetAttribute("*item1", nil)
+    button:SetAttribute("spell", spellName)
+    button:SetAttribute("spell1", spellName)
+    button:SetAttribute("*spell1", spellName)
+    button:SetAttribute("unit", "player")
+    button:SetAttribute("unit1", "player")
+    button:SetAttribute("*unit1", "player")
+end
+
 function ERM:GetDB()
     EasyRandomMountDB = CopyDefaults(DEFAULTS, EasyRandomMountDB)
     return EasyRandomMountDB
@@ -797,18 +833,7 @@ function ERM:SecureButtonPreClick(button)
 
     local actionType, value = self:GetFallingAction()
     if actionType == "spell" then
-        button:SetAttribute("type", "spell")
-        button:SetAttribute("type1", "spell")
-        button:SetAttribute("*type1", "spell")
-        button:SetAttribute("macrotext", nil)
-        button:SetAttribute("macrotext1", nil)
-        button:SetAttribute("*macrotext1", nil)
-        button:SetAttribute("spell", value)
-        button:SetAttribute("spell1", value)
-        button:SetAttribute("*spell1", value)
-        button:SetAttribute("unit", "player")
-        button:SetAttribute("unit1", "player")
-        button:SetAttribute("*unit1", "player")
+        SetSecureSpellAction(button, value)
         button.easyRandomMountSkipInsecure = true
     elseif actionType == "item" then
         button:SetAttribute("type", "item")
@@ -832,6 +857,13 @@ function ERM:SecureButtonPreClick(button)
         self:PrintThrottled("fallingUnusable", "No usable falling rescue action found.", 3)
     elseif actionType == "missing" then
         button.easyRandomMountSkipInsecure = true
+    elseif not actionType then
+        local mounts = GetUsableMountIDs()
+        local travelFormName = (#mounts == 0 or IsPlayerMoving()) and GetDruidTravelFormSpellName()
+        if travelFormName then
+            SetSecureSpellAction(button, travelFormName)
+            button.easyRandomMountSkipInsecure = true
+        end
     end
 end
 

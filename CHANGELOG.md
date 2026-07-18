@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.15
+
+- Added a secure Druid Travel Form fallback when moving or when no usable mount is available.
+
 ## 1.1.14
 
 - Added an option and slash command to disable class movement abilities in combat.
