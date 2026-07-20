@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.16
+
+- Fixed a Druid Travel Form taint error by tracking movement through safe player movement events instead of comparing `GetUnitSpeed()` in the secure click path.
+
 ## 1.1.15
 
 - Added a secure Druid Travel Form fallback when moving or when no usable mount is available.

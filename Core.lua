@@ -588,11 +588,7 @@ local function GetDruidTravelFormSpellName()
 end
 
 local function IsPlayerMoving()
-    if not GetUnitSpeed then
-        return false
-    end
-
-    return (GetUnitSpeed("player") or 0) > 0
+    return EasyRandomMount.playerIsMoving == true
 end
 
 local function SetSecureSpellAction(button, spellName)
@@ -1170,8 +1166,16 @@ frame:RegisterEvent("ZONE_CHANGED_INDOORS")
 frame:RegisterEvent("PLAYER_LEVEL_UP")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("COMPANION_UPDATE")
+frame:RegisterEvent("PLAYER_STARTED_MOVING")
+frame:RegisterEvent("PLAYER_STOPPED_MOVING")
 frame:SetScript("OnEvent", function(_, event, loadedAddonName)
     if event ~= "ADDON_LOADED" then
+        if event == "PLAYER_STARTED_MOVING" then
+            ERM.playerIsMoving = true
+        elseif event == "PLAYER_STOPPED_MOVING" then
+            ERM.playerIsMoving = false
+        end
+
         ERM:ClearMountCache()
         return
     end
