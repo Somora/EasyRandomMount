@@ -244,6 +244,10 @@ local function IsPlayerSwimmingAtSurface()
     end
 
     local breathScale = GetBreathTimerScale()
+    if IsPlayerSubmerged() and not breathScale then
+        return false
+    end
+
     if breathScale and breathScale < 0 then
         return false
     end

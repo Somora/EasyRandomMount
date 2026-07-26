@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.17
+
+- Fixed underwater mount detection while Water Breathing effects hide or alter the breath timer.
+
 ## 1.1.16
 
 - Fixed a Druid Travel Form taint error by tracking movement through safe player movement events instead of comparing `GetUnitSpeed()` in the secure click path.
