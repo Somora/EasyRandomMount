@@ -13,6 +13,7 @@ local DEFAULTS = {
     preferFlyingMounts = true,
     preferWaterMounts = true,
     preferFlyingAtWaterSurface = true,
+    preferFlyingWhenBreathTimerMissing = true,
     preferFlyingOnlyWhenFlyable = true,
     allowSkyridingMounts = true,
     combatFallbackEnabled = true,
@@ -245,7 +246,7 @@ local function IsPlayerSwimmingAtSurface()
 
     local breathScale = GetBreathTimerScale()
     if IsPlayerSubmerged() and not breathScale then
-        return false
+        return db.preferFlyingWhenBreathTimerMissing and IsFlyableArea and IsFlyableArea()
     end
 
     if breathScale and breathScale < 0 then
@@ -357,6 +358,7 @@ local function GetMountCacheKey()
         db.preferFlyingMounts and "1" or "0",
         db.preferWaterMounts and "1" or "0",
         db.preferFlyingAtWaterSurface and "1" or "0",
+        db.preferFlyingWhenBreathTimerMissing and "1" or "0",
         db.preferFlyingOnlyWhenFlyable and "1" or "0",
         db.allowSkyridingMounts and "1" or "0",
         db.favoriteMode or "all",
@@ -1022,6 +1024,17 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
         return
     end
 
+    if input == "breathsurface" then
+        local db = ERM:GetDB()
+        db.preferFlyingWhenBreathTimerMissing = not db.preferFlyingWhenBreathTimerMissing
+        ERM:ClearMountCache()
+        ERM:Print("Flying when the breath timer is missing is now " .. (db.preferFlyingWhenBreathTimerMissing and "enabled." or "disabled."))
+        if ERM.RefreshOptions then
+            ERM:RefreshOptions()
+        end
+        return
+    end
+
     if input == "flyable" then
         local db = ERM:GetDB()
         db.preferFlyingOnlyWhenFlyable = not db.preferFlyingOnlyWhenFlyable
@@ -1151,6 +1164,7 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
     ERM:Print("/erm flying - toggle flying mount preference")
     ERM:Print("/erm water - toggle water mount preference")
     ERM:Print("/erm surface - toggle flying at water surface")
+    ERM:Print("/erm breathsurface - toggle flying when breath timer is missing")
     ERM:Print("/erm favorites - cycle favorite mode")
     ERM:Print("/erm skyriding - toggle skyriding mounts")
     ERM:Print("/erm flyable - toggle flying only in flyable areas")

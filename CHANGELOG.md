@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.18
+
+- Added a surface-swimming preference for Water Breathing cases where the breath timer is hidden, allowing flying mounts to win in flyable areas.
+
 ## 1.1.17
 
 - Fixed underwater mount detection while Water Breathing effects hide or alter the breath timer.
