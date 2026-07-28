@@ -73,6 +73,14 @@ local WATER_MOUNT_TYPES = {
     [412] = true,
 }
 
+local WATER_BREATHING_AURA_IDS = {
+    [546] = true, -- Water Breathing
+    [5697] = true, -- Unending Breath
+    [7178] = true, -- Water Breathing elixir effects
+    [222105] = true, -- Underwater Breathing Buff
+    [430239] = true, -- Air Bubble
+}
+
 local SERVICE_MOUNT_PATTERNS = {
     repair = {
         "traveler's tundra mammoth",
@@ -234,6 +242,57 @@ local function GetBreathTimerScale()
     end
 end
 
+local function AuraNameLooksLikeWaterBreathing(name)
+    if type(name) ~= "string" then
+        return false
+    end
+
+    local lowerName = string.lower(name)
+    return string.find(lowerName, "water breathing", 1, true)
+        or string.find(lowerName, "underwater breathing", 1, true)
+        or string.find(lowerName, "air bubble", 1, true)
+end
+
+local function PlayerHasWaterBreathingAura()
+    if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+        for spellID in pairs(WATER_BREATHING_AURA_IDS) do
+            if C_UnitAuras.GetPlayerAuraBySpellID(spellID) then
+                return true
+            end
+        end
+    end
+
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+            for index = 1, 40 do
+                local aura = C_UnitAuras.GetAuraDataByIndex("player", index, filter)
+                if not aura then
+                    break
+                end
+
+                if WATER_BREATHING_AURA_IDS[aura.spellId] or AuraNameLooksLikeWaterBreathing(aura.name) then
+                    return true
+                end
+            end
+        end
+    elseif UnitAura then
+        for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+            for index = 1, 40 do
+                local name, _, _, _, _, _, _, _, _, spellID = UnitAura("player", index, filter)
+                if not name then
+                    break
+                end
+
+                if WATER_BREATHING_AURA_IDS[spellID] or AuraNameLooksLikeWaterBreathing(name) then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
 local function IsPlayerSwimmingAtSurface()
     if not IsSwimming or not IsSwimming() then
         return false
@@ -246,6 +305,10 @@ local function IsPlayerSwimmingAtSurface()
 
     local breathScale = GetBreathTimerScale()
     if IsPlayerSubmerged() and not breathScale then
+        if PlayerHasWaterBreathingAura() then
+            return false
+        end
+
         return db.preferFlyingWhenBreathTimerMissing and IsFlyableArea and IsFlyableArea()
     end
 
@@ -347,6 +410,7 @@ local function GetMountCacheKey()
     local swimming = IsSwimming and IsSwimming() and "1" or "0"
     local submerged = IsPlayerSubmerged() and "1" or "0"
     local surface = IsPlayerSwimmingAtSurface() and "1" or "0"
+    local waterBreathing = PlayerHasWaterBreathingAura() and "1" or "0"
     local level = UnitLevel and UnitLevel("player") or 0
 
     return table.concat({
@@ -354,6 +418,7 @@ local function GetMountCacheKey()
         swimming,
         submerged,
         surface,
+        waterBreathing,
         tostring(level),
         db.preferFlyingMounts and "1" or "0",
         db.preferWaterMounts and "1" or "0",
@@ -1186,8 +1251,13 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("COMPANION_UPDATE")
 frame:RegisterEvent("PLAYER_STARTED_MOVING")
 frame:RegisterEvent("PLAYER_STOPPED_MOVING")
-frame:SetScript("OnEvent", function(_, event, loadedAddonName)
+frame:RegisterEvent("UNIT_AURA")
+frame:SetScript("OnEvent", function(_, event, eventArg)
     if event ~= "ADDON_LOADED" then
+        if event == "UNIT_AURA" and eventArg ~= "player" then
+            return
+        end
+
         if event == "PLAYER_STARTED_MOVING" then
             ERM.playerIsMoving = true
         elseif event == "PLAYER_STOPPED_MOVING" then
@@ -1198,7 +1268,7 @@ frame:SetScript("OnEvent", function(_, event, loadedAddonName)
         return
     end
 
-    if loadedAddonName ~= addonName then
+    if eventArg ~= addonName then
         return
     end
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.19
+
+- Fixed underwater mount priority near air bubbles and Water Breathing effects by checking active water-breathing auras before treating hidden breath timers as surface swimming.
+
 ## 1.1.18
 
 - Added a surface-swimming preference for Water Breathing cases where the breath timer is hidden, allowing flying mounts to win in flyable areas.
