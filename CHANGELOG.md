@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.20
+
+- Updated the TOC interface version for WoW 12.1.0.
+
 ## 1.1.19
 
 - Fixed underwater mount priority near air bubbles and Water Breathing effects by checking active water-breathing auras before treating hidden breath timers as surface swimming.
