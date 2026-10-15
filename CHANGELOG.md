@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.21
+
+- Updated the TOC interface version for WoW Retail 12.1.5.
+
 ## 1.1.20
 
 - Updated the TOC interface version for WoW 12.1.0.
