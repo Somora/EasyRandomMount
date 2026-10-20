@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.22
+
+- Fixed falling rescue item checks on Retail 12.1.5 by using C_Item.GetItemCount instead of the removed global API.
+
 ## 1.1.21
 
 - Updated the TOC interface version for WoW Retail 12.1.5.

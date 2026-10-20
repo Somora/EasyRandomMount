@@ -162,8 +162,16 @@ local function IsSpellKnownByPlayer(spellID)
     return GetSpellName(spellID) ~= nil
 end
 
+local function GetOwnedItemCount(itemID)
+    if C_Item and C_Item.GetItemCount then
+        return C_Item.GetItemCount(itemID, false, true)
+    end
+
+    return GetItemCount(itemID, false, true)
+end
+
 local function IsItemUsable(itemID)
-    if GetItemCount(itemID, false, true) <= 0 then
+    if GetOwnedItemCount(itemID) <= 0 then
         return false
     end
 
@@ -189,7 +197,7 @@ local function IsItemUsable(itemID)
 end
 
 local function IsItemOwned(itemID)
-    return GetItemCount(itemID, false, true) > 0
+    return GetOwnedItemCount(itemID) > 0
 end
 
 local function GetItemName(itemID)
