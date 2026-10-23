@@ -114,9 +114,7 @@ local COMBAT_SPELLS_BY_CLASS = {
     DRUID = { 783 }, -- Travel Form
     EVOKER = { 358267 }, -- Hover
     HUNTER = { 186257 }, -- Aspect of the Cheetah
-    MAGE = { 130 }, -- Slow Fall
     PALADIN = { 190784 }, -- Divine Steed
-    PRIEST = { 1706 }, -- Levitate
     ROGUE = { 2983 }, -- Sprint
     SHAMAN = { 2645, 58875 }, -- Ghost Wolf, Spirit Walk
 }
@@ -653,11 +651,7 @@ local function GetCombatMacroText()
         for _, spellID in ipairs(spellIDs or {}) do
             local spellName = GetSpellName(spellID)
             if spellName then
-                if spellID == 130 or spellID == 1706 then
-                    lines[#lines + 1] = "/cast [@player,combat,nomounted] " .. spellName
-                else
-                    lines[#lines + 1] = "/cast [combat,nomounted] " .. spellName
-                end
+                lines[#lines + 1] = "/cast [combat,nomounted] " .. spellName
             end
         end
     end

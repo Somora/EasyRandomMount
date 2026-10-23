@@ -2,7 +2,7 @@
 local combat, mounted, falling, swimming, submerged = false, false, false, false, false
 local secretAuras, auraCalls, dismounts, summons = false, 0, 0, 0
 local itemCount, cooldownEnabled, cooldownStart, cooldownDuration = 1, true, 0, 0
-local itemUsable, knownAura = true, false
+local itemUsable, knownAura, playerClass = true, false, 'HUNTER'
 local secret = {}
 local frames, messages = {}, {}
 local frameMethods = {}
@@ -45,7 +45,7 @@ IsSwimming = function() return swimming end
 IsSubmerged = function() return submerged end
 IsFlyableArea = function() return true end
 UnitLevel = function() return 80 end
-UnitClassBase = function() return 'MAGE' end
+UnitClassBase = function() return playerClass end
 GetTime = function() return 100 end
 Dismount = function() assert(not combat); dismounts = dismounts + 1 end
 issecretvalue = function(value) return value == secret end
@@ -151,7 +151,7 @@ for _, keyDown in ipairs({ false, true }) do
 end
 -- Secure actions must already be prepared before lockdown begins.
 local macro = button.attrs.macrotext
-assert(macro:find('/cast [@player,combat,nomounted] Slow Fall', 1, true))
+assert(macro:find('/cast [combat,nomounted]', 1, true))
 assert(not macro:find('falling', 1, true), 'unsupported macro conditional')
 assert(macro:find('/cast', 1, true) < macro:find('/dismount', 1, true))
 for _, frame in ipairs(frames) do assert(not frame.events.PLAYER_REGEN_DISABLED) end
@@ -219,3 +219,24 @@ assert(messages[#messages]:find('mountID=202', 1, true))
 SlashCmdList.EASYRANDOMMOUNT('version')
 assert(messages[#messages]:find('test-version', 1, true))
 io.write('PASS: item APIs, cooldowns, secret auras, mount pools, combat lockdown, options, menu, version\n')
+
+-- Falling-only spells must never be baked into combat fallback macros.
+C_SpellBook.IsSpellKnown = function() return true end
+for _, data in ipairs({ { 'MAGE', 130 }, { 'PRIEST', 1706 } }) do
+    playerClass = data[1]
+    ERM:GetDB().combatFallbackEnabled = true
+    ERM:GetDB().falling = { { type = 'spell', id = data[2] } }
+    ERM:RefreshSecureButtons()
+    assert(not button.attrs.macrotext:find('/cast', 1, true))
+    falling = false
+    assert(ERM:GetFallingAction() == nil, 'standing player selected falling rescue')
+    falling = true
+    assert(ERM:GetFallingAction() == 'spell', 'falling rescue lost outside combat')
+    combat = true
+    local before = button.attrs.macrotext
+    ERM:SecureButtonPreClick(button)
+    ERM:SecureButtonPostClick(button)
+    assert(button.attrs.macrotext == before and not before:find('/cast', 1, true))
+    combat = false
+end
+io.write('PASS: Mage/Priest falling rescue only outside combat; no combat auto-casts\n')

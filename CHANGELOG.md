@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.25
+
+- Removed Slow Fall and Levitate from unconditional combat fallback actions. Both remain available through falling rescue only while falling outside combat; use a separate spell binding in combat.
+
 ## 1.1.24
 
 - Prepared combat fallback actions before combat instead of modifying protected buttons during lockdown.

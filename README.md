@@ -58,5 +58,5 @@ The settings are split into three pages:
 - Repair and auction house mount keybinds detect known service mounts by their Mount Journal names.
 - Water-surface detection depends on WoW state such as swimming, flyable area, and the breath timer. Some edge cases may vary by zone.
 - The Mount Journal right-click menu includes an EasyRandomMount blacklist checkbox through Blizzard's menu extension API.
-- Combat fallback spells are prepared before combat. Slow Fall and Levitate are self casts on key press; WoW has no falling macro condition. Combat option changes made during combat apply after combat ends.
+- Combat fallback spells are prepared before combat. Slow Fall and Levitate are only selected while falling outside combat; automatic falling-only selection is unavailable during combat because WoW has no falling macro condition. Use a separate spell binding for falling rescue in combat. Combat option changes made during combat apply after combat ends.
 - If WoW marks the addon as out of date, run `/dump select(4, GetBuildInfo())` in chat and update `## Interface` in `EasyRandomMount.toc`.
