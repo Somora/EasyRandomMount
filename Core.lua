@@ -262,6 +262,11 @@ local function AuraNameLooksLikeWaterBreathing(name)
 end
 
 local function PlayerHasWaterBreathingAura()
+    -- Restricted aura APIs can reject the call itself, even outside combat lockdown.
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then
+        return nil
+    end
+
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
         for spellID in pairs(WATER_BREATHING_AURA_IDS) do
             if C_UnitAuras.GetPlayerAuraBySpellID(spellID) then
@@ -313,7 +318,8 @@ local function IsPlayerSwimmingAtSurface()
 
     local breathScale = GetBreathTimerScale()
     if IsPlayerSubmerged() and not breathScale then
-        if PlayerHasWaterBreathingAura() then
+        -- If aura access is restricted, keep submerged players in the underwater pool.
+        if PlayerHasWaterBreathingAura() ~= false then
             return false
         end
 

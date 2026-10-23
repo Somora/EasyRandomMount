@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.23
+
+- Fixed water-breathing aura checks calling restricted APIs while auras are secret.
+- Kept submerged players in the underwater mount pool when water-breathing auras cannot be checked.
+
 ## 1.1.22
 
 - Fixed falling rescue item checks on Retail 12.1.5 by using C_Item.GetItemCount instead of the removed global API.
