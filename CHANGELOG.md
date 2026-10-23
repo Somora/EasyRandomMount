@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.24
+
+- Prepared combat fallback actions before combat instead of modifying protected buttons during lockdown.
+- Fixed duplicate key-down/key-up actions and replaced the unsupported falling macro condition with a combat-only self cast.
+- Fixed boolean item cooldown handling and removed unsafe fallbacks to missing item and spell APIs.
+- Extended Blizzard's native mount menu instead of replacing its click handlers.
+- Filtered player aura events at registration and guarded secret aura fields.
+- Added /erm version and Lua 5.1 compatibility regression tests.
+
 ## 1.1.23
 
 - Fixed water-breathing aura checks calling restricted APIs while auras are secret.

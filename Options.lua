@@ -15,9 +15,17 @@ end
 local function GetActionLabel(action)
     local icon
     if action.type == "item" then
-        icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(action.id) or GetItemIcon(action.id)
+        if C_Item and C_Item.GetItemIconByID then
+            icon = C_Item.GetItemIconByID(action.id)
+        elseif GetItemIcon then
+            icon = GetItemIcon(action.id)
+        end
     else
-        icon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(action.id) or GetSpellTexture(action.id)
+        if C_Spell and C_Spell.GetSpellTexture then
+            icon = C_Spell.GetSpellTexture(action.id)
+        elseif GetSpellTexture then
+            icon = GetSpellTexture(action.id)
+        end
     end
 
     local iconText = icon and ("|T" .. icon .. ":16:16:0:0|t ") or ""
@@ -225,7 +233,11 @@ local function AddFallingAction(typeName)
 
             local name
             if typeName == "item" then
-                name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id) or GetItemInfo(id)
+                if C_Item and C_Item.GetItemNameByID then
+                    name = C_Item.GetItemNameByID(id)
+                elseif GetItemInfo then
+                    name = GetItemInfo(id)
+                end
             else
                 name = GetSpellName(id) or tostring(id)
             end
@@ -309,6 +321,7 @@ mainPanel.combatFallbackCheck:SetPoint("TOPLEFT", mainPanel.fallingCheck, "BOTTO
 mainPanel.combatFallbackCheck.Text:SetText("Use class movement abilities in combat")
 mainPanel.combatFallbackCheck:SetScript("OnClick", function(self)
     ERM:GetDB().combatFallbackEnabled = self:GetChecked()
+    ERM:RefreshSecureButtons()
 end)
 
 mainPanel.flyingCheck = CreateFrame("CheckButton", nil, mainPanel, "InterfaceOptionsCheckButtonTemplate")

@@ -37,6 +37,7 @@ The settings are split into three pages:
 - `/erm repair` summons a repair mount.
 - `/erm ah` summons an auction house mount.
 - `/erm options` opens the options panel.
+- `/erm version` shows the installed addon version.
 - `/erm falling` toggles falling rescue.
 - `/erm flying` toggles flying mount preference.
 - `/erm water` toggles underwater mount preference.
@@ -56,5 +57,6 @@ The settings are split into three pages:
 - In combat, EasyRandomMount uses a pre-built secure fallback macro. This is intentionally simpler than the normal out-of-combat random mount logic because addons cannot dynamically change protected actions after combat lockdown starts.
 - Repair and auction house mount keybinds detect known service mounts by their Mount Journal names.
 - Water-surface detection depends on WoW state such as swimming, flyable area, and the breath timer. Some edge cases may vary by zone.
-- The Mount Journal right-click menu is replaced for mount rows so EasyRandomMount can add blacklist support.
+- The Mount Journal right-click menu includes an EasyRandomMount blacklist checkbox through Blizzard's menu extension API.
+- Combat fallback spells are prepared before combat. Slow Fall and Levitate are self casts on key press; WoW has no falling macro condition. Combat option changes made during combat apply after combat ends.
 - If WoW marks the addon as out of date, run `/dump select(4, GetBuildInfo())` in chat and update `## Interface` in `EasyRandomMount.toc`.

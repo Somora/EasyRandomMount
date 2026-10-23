@@ -167,7 +167,7 @@ local function GetOwnedItemCount(itemID)
         return C_Item.GetItemCount(itemID, false, true)
     end
 
-    return GetItemCount(itemID, false, true)
+    return GetItemCount and GetItemCount(itemID, false, true) or 0
 end
 
 local function IsItemUsable(itemID)
@@ -178,8 +178,10 @@ local function IsItemUsable(itemID)
     local usable, noMana
     if C_Item and C_Item.IsUsableItem then
         usable, noMana = C_Item.IsUsableItem(itemID)
-    else
+    elseif IsUsableItem then
         usable, noMana = IsUsableItem(itemID)
+    else
+        return false
     end
 
     if not usable or noMana then
@@ -189,11 +191,13 @@ local function IsItemUsable(itemID)
     local start, duration, enabled
     if C_Item and C_Item.GetItemCooldown then
         start, duration, enabled = C_Item.GetItemCooldown(itemID)
-    else
+    elseif GetItemCooldown then
         start, duration, enabled = GetItemCooldown(itemID)
+    else
+        return false
     end
 
-    return enabled == 1 and (start == 0 or duration == 0)
+    return (enabled == true or enabled == 1) and (start == 0 or duration == 0)
 end
 
 local function IsItemOwned(itemID)
@@ -205,7 +209,7 @@ local function GetItemName(itemID)
         return C_Item.GetItemNameByID(itemID)
     end
 
-    return GetItemInfo(itemID)
+    return GetItemInfo and GetItemInfo(itemID)
 end
 
 local function IsFlyingMount(mountID)
@@ -251,6 +255,9 @@ local function GetBreathTimerScale()
 end
 
 local function AuraNameLooksLikeWaterBreathing(name)
+    if issecretvalue and issecretvalue(name) then
+        return false
+    end
     if type(name) ~= "string" then
         return false
     end
@@ -283,7 +290,8 @@ local function PlayerHasWaterBreathingAura()
                     break
                 end
 
-                if WATER_BREATHING_AURA_IDS[aura.spellId] or AuraNameLooksLikeWaterBreathing(aura.name) then
+                if (not issecretvalue or not issecretvalue(aura.spellId)) and WATER_BREATHING_AURA_IDS[aura.spellId]
+                    or AuraNameLooksLikeWaterBreathing(aura.name) then
                     return true
                 end
             end
@@ -296,7 +304,8 @@ local function PlayerHasWaterBreathingAura()
                     break
                 end
 
-                if WATER_BREATHING_AURA_IDS[spellID] or AuraNameLooksLikeWaterBreathing(name) then
+                if (not issecretvalue or not issecretvalue(spellID)) and WATER_BREATHING_AURA_IDS[spellID]
+                    or AuraNameLooksLikeWaterBreathing(name) then
                     return true
                 end
             end
@@ -638,30 +647,24 @@ end
 local function GetCombatMacroText()
     local class = GetPlayerClassFileName()
     local spellIDs = class and COMBAT_SPELLS_BY_CLASS[class]
-    local lines = {
-        "/dismount",
-        "/stopmacro [mounted]",
-    }
+    local lines = {}
 
     if EasyRandomMount:GetDB().combatFallbackEnabled then
         for _, spellID in ipairs(spellIDs or {}) do
             local spellName = GetSpellName(spellID)
             if spellName then
                 if spellID == 130 or spellID == 1706 then
-                    lines[#lines + 1] = "/cast [@player,falling] " .. spellName
+                    lines[#lines + 1] = "/cast [@player,combat,nomounted] " .. spellName
                 else
-                    lines[#lines + 1] = "/cast " .. spellName
+                    lines[#lines + 1] = "/cast [combat,nomounted] " .. spellName
                 end
             end
         end
     end
 
-    lines[#lines + 1] = "/leavevehicle"
+    lines[#lines + 1] = "/dismount"
+    lines[#lines + 1] = "/leavevehicle [canexitvehicle]"
     return table.concat(lines, "\n")
-end
-
-local function GetDismountMacroText()
-    return "/dismount"
 end
 
 local function GetDruidTravelFormSpellName()
@@ -835,13 +838,13 @@ function ERM:GetServiceMountIDs(serviceType)
 end
 
 function ERM:SummonServiceMount(serviceType)
-    if IsPlayerMounted() then
-        Dismount()
+    if InCombatLockdown() then
+        self:PrintThrottled("serviceMountCombat", "Cannot summon a mount while in combat.", 3)
         return
     end
 
-    if InCombatLockdown() then
-        self:PrintThrottled("serviceMountCombat", "Cannot summon a mount while in combat.", 3)
+    if IsPlayerMounted() then
+        Dismount()
         return
     end
 
@@ -862,13 +865,13 @@ function ERM:SummonServiceMount(serviceType)
 end
 
 function ERM:SummonRandomMount()
-    if IsPlayerMounted() then
-        Dismount()
+    if InCombatLockdown() then
+        self:PrintThrottled("randomMountCombat", "Cannot summon a mount while in combat.", 3)
         return
     end
 
-    if InCombatLockdown() then
-        self:PrintThrottled("randomMountCombat", "Cannot summon a mount while in combat.", 3)
+    if IsPlayerMounted() then
+        Dismount()
         return
     end
 
@@ -949,23 +952,7 @@ function ERM:SecureButtonPreClick(button)
 end
 
 function ERM:SecureButtonPostClick(button)
-    if InCombatLockdown() then
-        return
-    end
-
-    button:SetAttribute("spell", nil)
-    button:SetAttribute("spell1", nil)
-    button:SetAttribute("item", nil)
-    button:SetAttribute("item1", nil)
-    button:SetAttribute("type", "macro")
-    button:SetAttribute("type1", "macro")
-    button:SetAttribute("*type1", "macro")
-    button:SetAttribute("macrotext", GetDismountMacroText())
-    button:SetAttribute("macrotext1", GetDismountMacroText())
-    button:SetAttribute("*macrotext1", GetDismountMacroText())
-    button:SetAttribute("unit", "player")
-    button:SetAttribute("unit1", "player")
-    button:SetAttribute("*unit1", "player")
+    self:SetupDismountSecureButton(button)
 end
 
 function ERM:SecureButtonOnClick(button)
@@ -989,7 +976,11 @@ function ERM:SecureButtonOnClick(button)
     end
 end
 
-function ERM:SetupCombatSecureButton(button)
+function ERM:SetupDismountSecureButton(button)
+    if InCombatLockdown() then
+        return
+    end
+
     button:SetAttribute("spell", nil)
     button:SetAttribute("spell1", nil)
     button:SetAttribute("item", nil)
@@ -1003,24 +994,15 @@ function ERM:SetupCombatSecureButton(button)
     button:SetAttribute("unit", "player")
     button:SetAttribute("unit1", "player")
     button:SetAttribute("*unit1", "player")
-    button.easyRandomMountSkipInsecure = true
+    button.easyRandomMountSkipInsecure = false
 end
 
-function ERM:SetupDismountSecureButton(button)
-    button:SetAttribute("spell", nil)
-    button:SetAttribute("spell1", nil)
-    button:SetAttribute("item", nil)
-    button:SetAttribute("item1", nil)
-    button:SetAttribute("type", "macro")
-    button:SetAttribute("type1", "macro")
-    button:SetAttribute("*type1", "macro")
-    button:SetAttribute("macrotext", GetDismountMacroText())
-    button:SetAttribute("macrotext1", GetDismountMacroText())
-    button:SetAttribute("*macrotext1", GetDismountMacroText())
-    button:SetAttribute("unit", "player")
-    button:SetAttribute("unit1", "player")
-    button:SetAttribute("*unit1", "player")
-    button.easyRandomMountSkipInsecure = false
+function ERM:RefreshSecureButtons()
+    for _, name in ipairs({ "EasyRandomMountSecureButton", "EasyRandomMountRepairSecureButton", "EasyRandomMountAuctionHouseSecureButton" }) do
+        if _G[name] then
+            self:SetupDismountSecureButton(_G[name])
+        end
+    end
 end
 
 function ERM:MigrateServiceKeybindings()
@@ -1053,6 +1035,12 @@ SLASH_EASYRANDOMMOUNT2 = "/easyrandommount"
 SlashCmdList.EASYRANDOMMOUNT = function(input)
     input = (input or ""):lower()
 
+    if input == "version" then
+        local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")
+        ERM:Print("Version: " .. (version or "unknown"))
+        return
+    end
+
     if input == "falling" then
         local db = ERM:GetDB()
         db.fallingEnabled = not db.fallingEnabled
@@ -1066,6 +1054,7 @@ SlashCmdList.EASYRANDOMMOUNT = function(input)
     if input == "combat" then
         local db = ERM:GetDB()
         db.combatFallbackEnabled = not db.combatFallbackEnabled
+        ERM:RefreshSecureButtons()
         ERM:Print("Combat class abilities are now " .. (db.combatFallbackEnabled and "enabled." or "disabled."))
         if ERM.RefreshOptions then
             ERM:RefreshOptions()
@@ -1265,13 +1254,9 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("COMPANION_UPDATE")
 frame:RegisterEvent("PLAYER_STARTED_MOVING")
 frame:RegisterEvent("PLAYER_STOPPED_MOVING")
-frame:RegisterEvent("UNIT_AURA")
+frame:RegisterUnitEvent("UNIT_AURA", "player")
 frame:SetScript("OnEvent", function(_, event, eventArg)
     if event ~= "ADDON_LOADED" then
-        if event == "UNIT_AURA" and eventArg ~= "player" then
-            return
-        end
-
         if event == "PLAYER_STARTED_MOVING" then
             ERM.playerIsMoving = true
         elseif event == "PLAYER_STOPPED_MOVING" then
@@ -1297,23 +1282,31 @@ local function CreateEasyRandomMountSecureButton(name, mode)
     local button = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
     button.easyRandomMountMode = mode
     button:RegisterForClicks("AnyUp", "AnyDown")
-    button:SetScript("PreClick", function(self)
-        ERM:SecureButtonPreClick(self)
-    end)
-    button:HookScript("OnClick", function(self)
-        ERM:SecureButtonOnClick(self)
-    end)
-    button:SetScript("PostClick", function(self)
-        ERM:SecureButtonPostClick(self)
-    end)
-    button:RegisterEvent("PLAYER_REGEN_DISABLED")
-    button:RegisterEvent("PLAYER_REGEN_ENABLED")
-    button:SetScript("OnEvent", function(self, event)
-        if event == "PLAYER_REGEN_DISABLED" then
-            ERM:SetupCombatSecureButton(self)
-        elseif event == "PLAYER_REGEN_ENABLED" then
-            ERM:SetupDismountSecureButton(self)
+    -- Match SecureActionButton_OnClick so key-down and key-up do not summon twice.
+    local function IsActionClick(down)
+        local useOnKeyDown = GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") or false
+        return (down and useOnKeyDown) or (not down and not useOnKeyDown)
+    end
+    button:SetScript("PreClick", function(self, _, down)
+        if IsActionClick(down) then
+            ERM:SecureButtonPreClick(self)
         end
+    end)
+    button:HookScript("OnClick", function(self, _, down)
+        if IsActionClick(down) then
+            ERM:SecureButtonOnClick(self)
+        end
+    end)
+    button:SetScript("PostClick", function(self, _, down)
+        if IsActionClick(down) then
+            ERM:SecureButtonPostClick(self)
+        end
+    end)
+    button:RegisterEvent("PLAYER_REGEN_ENABLED")
+    button:RegisterEvent("PLAYER_ENTERING_WORLD")
+    button:RegisterEvent("SPELLS_CHANGED")
+    button:SetScript("OnEvent", function(self, event)
+        ERM:SetupDismountSecureButton(self)
     end)
 
     ERM:SetupDismountSecureButton(button)
